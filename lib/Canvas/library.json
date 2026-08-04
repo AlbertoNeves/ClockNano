@@ -1,0 +1,13 @@
+{
+    "name": "Canvas",
+    "version": "1.0.0",
+    "description": "ClockNano framebuffer library",
+    "keywords": [
+        "framebuffer",
+        "graphics",
+        "canvas"
+    ],
+    "build": {
+        "includeDir": "."
+    }
+}

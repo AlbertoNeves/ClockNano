@@ -1,49 +1,98 @@
 #include "Canvas.h"
 
+#include <string.h>
+
 Canvas canvas;
 
-void Canvas::begin()
+Canvas::Canvas()
 {
     clear();
 }
 
 void Canvas::clear()
 {
-    memset(buffer,0,sizeof(buffer));
+    memset(m_buffer, 0x00, sizeof(m_buffer));
 }
 
-void Canvas::setPixel(uint8_t x,
-                      uint8_t y,
-                      bool state)
+void Canvas::fill()
 {
-    if(x>=WIDTH) return;
-    if(y>=HEIGHT) return;
+    memset(m_buffer, 0xFF, sizeof(m_buffer));
+}
 
-    if(state)
-        buffer[x] |= (1<<y);
+void Canvas::setPixel(
+    uint8_t x,
+    uint8_t y,
+    bool state)
+{
+    if (x >= Width)
+        return;
+
+    if (y >= Height)
+        return;
+
+    uint8_t mask = (1 << y);
+
+    if (state)
+        m_buffer[x] |= mask;
     else
-        buffer[x] &= ~(1<<y);
+        m_buffer[x] &= ~mask;
 }
 
-bool Canvas::getPixel(uint8_t x,
-                      uint8_t y) const
+void Canvas::togglePixel(
+    uint8_t x,
+    uint8_t y)
 {
-    if(x>=WIDTH) return false;
-    if(y>=HEIGHT) return false;
+    if (x >= Width)
+        return;
 
-    return (buffer[x] & (1<<y));
+    if (y >= Height)
+        return;
+
+    m_buffer[x] ^= (1 << y);
 }
 
-void Canvas::invertPixel(uint8_t x,
-                         uint8_t y)
+bool Canvas::getPixel(
+    uint8_t x,
+    uint8_t y) const
 {
-    if(x>=WIDTH) return;
-    if(y>=HEIGHT) return;
+    if (x >= Width)
+        return false;
 
-    buffer[x] ^= (1<<y);
+    if (y >= Height)
+        return false;
+
+    return (m_buffer[x] & (1 << y)) != 0;
 }
 
-uint8_t Canvas::getColumn(uint8_t x) const
+void Canvas::clearColumn(
+    uint8_t column)
 {
-    return buffer[x];
+    if (column >= Width)
+        return;
+
+    m_buffer[column] = 0;
+}
+
+void Canvas::setColumn(
+    uint8_t column,
+    uint8_t value)
+{
+    if (column >= Width)
+        return;
+
+    m_buffer[column] = value;
+}
+
+uint8_t Canvas::getColumn(
+    uint8_t column) const
+{
+    if (column >= Width)
+        return 0;
+
+    return m_buffer[column];
+}
+
+const uint8_t* Canvas::data() const
+{
+    return m_buffer;
 }

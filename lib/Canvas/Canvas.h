@@ -1,36 +1,68 @@
-#ifndef CANVAS_H
-#define CANVAS_H
+#pragma once
 
 #include <Arduino.h>
 
+/**
+ * @brief Framebuffer monocromático de 32x8 pixels.
+ *
+ * Cada coluna é armazenada em um byte.
+ *
+ * bit0 = linha inferior
+ * bit7 = linha superior
+ *
+ * O Canvas não conhece o hardware.
+ * Ele apenas mantém uma imagem em memória.
+ */
 class Canvas
 {
 public:
 
-    static const uint8_t WIDTH = 32;
-    static const uint8_t HEIGHT = 8;
+    static constexpr uint8_t Width  = 32;
+    static constexpr uint8_t Height = 8;
 
-    void begin();
+    Canvas();
 
+    /// Limpa todo o framebuffer
     void clear();
 
-    void setPixel(uint8_t x,
-                  uint8_t y,
-                  bool state = true);
+    /// Acende todos os pixels
+    void fill();
 
-    bool getPixel(uint8_t x,
-                  uint8_t y) const;
+    /// Liga ou desliga um pixel
+    void setPixel(
+        uint8_t x,
+        uint8_t y,
+        bool state = true);
 
-    void invertPixel(uint8_t x,
-                     uint8_t y);
+    /// Alterna um pixel
+    void togglePixel(
+        uint8_t x,
+        uint8_t y);
 
-    uint8_t getColumn(uint8_t x) const;
+    /// Lê um pixel
+    bool getPixel(
+        uint8_t x,
+        uint8_t y) const;
+
+    /// Limpa uma coluna
+    void clearColumn(
+        uint8_t column);
+
+    /// Escreve uma coluna inteira
+    void setColumn(
+        uint8_t column,
+        uint8_t value);
+
+    /// Lê uma coluna
+    uint8_t getColumn(
+        uint8_t column) const;
+
+    /// Retorna ponteiro para o framebuffer
+    const uint8_t* data() const;
 
 private:
 
-    uint8_t buffer[WIDTH];
+    uint8_t m_buffer[Width];
 };
 
 extern Canvas canvas;
-
-#endif

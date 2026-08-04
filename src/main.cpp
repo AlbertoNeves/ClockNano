@@ -1,15 +1,18 @@
 #include <Arduino.h>
 
-#include "Display.h"
+#include <Canvas.h>
 
 void setup()
 {
-    display.begin();
+    canvas.clear();
+
+    canvas.setPixel(10,3);
+
+    canvas.setPixel(15,7);
+
+    canvas.togglePixel(10,3);
 }
 
 void loop()
 {
-    display.showTime(12,45);
-
-    display.update();
 }

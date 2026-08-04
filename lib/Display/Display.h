@@ -1,7 +1,8 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#pragma once
 
 #include <Arduino.h>
+
+class Canvas;
 
 class Display
 {
@@ -9,21 +10,15 @@ public:
 
     bool begin();
 
+    void update(const Canvas& canvas);
+
     void clear();
 
-    void update();
-
-    void showTime(uint8_t hour,
-                  uint8_t minute,
-                  bool blink = false);
+    void setBrightness(uint8_t value);
 
 private:
 
-    void drawDigit(uint8_t x,
-                   uint8_t digit);
-
+    uint8_t m_brightness = 3;
 };
 
 extern Display display;
-
-#endif
