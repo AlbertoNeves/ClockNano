@@ -1,0 +1,23 @@
+# PlatformIO
+.pio/
+
+# VSCode
+.vscode/
+
+# Compilação
+*.o
+*.elf
+*.hex
+*.bin
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
