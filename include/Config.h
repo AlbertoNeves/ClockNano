@@ -1,47 +1,27 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
 #include <Arduino.h>
+#include <MD_MAX72xx.h>
 
-//====================================================
-// Firmware
-//====================================================
+namespace Config
+{
+    constexpr char FW_NAME[] = "ClockNano";
+    constexpr char FW_VERSION[] = "2.0.0";
 
-#define FW_NAME        "ClockNano"
-#define FW_VERSION     "2.0.0"
+    constexpr uint8_t DisplayModules = 4;
 
-//====================================================
-// Display
-//====================================================
+    constexpr uint8_t PinDIN = 11;
+    constexpr uint8_t PinCLK = 13;
+    constexpr uint8_t PinCS  = 10;
 
-#define DISPLAY_MODULES    4
+    constexpr uint8_t BtnMinus = 2;
+    constexpr uint8_t BtnOk    = 3;
+    constexpr uint8_t BtnPlus  = 4;
 
-#define PIN_MAX_DIN        11
-#define PIN_MAX_CLK        13
-#define PIN_MAX_CS         10
+    constexpr uint8_t Buzzer = 5;
 
-// Hardware FC16
-#define DISPLAY_HW MD_MAX72XX::FC16_HW
+    constexpr uint8_t DisplayWidth  = 32;
+    constexpr uint8_t DisplayHeight = 8;
 
-//====================================================
-// RTC
-//====================================================
-
-#define PIN_RTC_SDA        A4
-#define PIN_RTC_SCL        A5
-
-//====================================================
-// Buttons
-//====================================================
-
-#define PIN_BTN_MINUS      2
-#define PIN_BTN_OK         3
-#define PIN_BTN_PLUS       4
-
-//====================================================
-// Buzzer
-//====================================================
-
-#define PIN_BUZZER         5
-
-#endif
+    constexpr auto Hardware = MD_MAX72XX::FC16_HW;
+}
