@@ -10,35 +10,24 @@ void setup()
 
     canvas.clear();
 
-    Graphics::drawHLine(canvas, 0, 0, 32);
+    Graphics::drawVLine(canvas, 0, 0, 8);
 
-    Graphics::drawHLine(canvas, 0, 7, 32);
+    Graphics::drawVLine(canvas, 31, 0, 8);
 
     display.refresh(canvas);
 
-delay(1000);
+    delay(500);
+
     canvas.clear();
 
-Graphics::drawHLine(canvas, 5, 3, 20);
+    Graphics::drawHLine(canvas, 0, 3, 32);
 
-display.refresh(canvas);
+    Graphics::drawVLine(canvas, 15, 0, 8);
 
-delay(1000);
-    canvas.clear();
-
-    for (size_t j = 0; j < 9; j++)
-    {
-      for (size_t i = 0; i < 33; i++)
-    {
-      Graphics::drawHLine(canvas,j, j, i);
-       display.refresh(canvas);
-    }
-    }
-    canvas.clear();
-    
-    
+    display.refresh(canvas);
 }
 
 void loop()
 {
 }
+

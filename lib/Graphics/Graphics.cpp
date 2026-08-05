@@ -38,3 +38,29 @@ void Graphics::drawHLine(
         canvas.setPixel(x + i, y);
     }
 }
+
+//==========================================================
+
+void Graphics::drawVLine(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    uint8_t length)
+{
+    if (x >= canvas.width())
+        return;
+
+    if (y >= canvas.height())
+        return;
+
+    if (length == 0)
+        return;
+
+    if (y + length > canvas.height())
+        length = canvas.height() - y;
+
+    for (uint8_t i = 0; i < length; i++)
+    {
+        drawPixel(canvas, x, y + i);
+    }
+}
