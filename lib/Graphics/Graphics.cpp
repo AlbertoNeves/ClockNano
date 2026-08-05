@@ -1,9 +1,15 @@
 #include "Graphics.h"
 
 #include <Canvas.h>
+#include <Font.h>
 
+#include <avr/pgmspace.h>
 
+//
 //==========================================================
+//  PIXEL
+//==========================================================
+//
 
 void Graphics::drawPixel(
     Canvas& canvas,
@@ -14,7 +20,11 @@ void Graphics::drawPixel(
     canvas.setPixel(x, y, state);
 }
 
+//
 //==========================================================
+//  LINHA HORIZONTAL
+//==========================================================
+//
 
 void Graphics::drawHLine(
     Canvas& canvas,
@@ -22,13 +32,13 @@ void Graphics::drawHLine(
     uint8_t y,
     uint8_t length)
 {
-    if (y >= canvas.height())
+    if (length == 0)
         return;
 
     if (x >= canvas.width())
         return;
 
-    if (length == 0)
+    if (y >= canvas.height())
         return;
 
     if (x + length > canvas.width())
@@ -36,11 +46,15 @@ void Graphics::drawHLine(
 
     for (uint8_t i = 0; i < length; i++)
     {
-        canvas.setPixel(x + i, y);
+        drawPixel(canvas, x + i, y);
     }
 }
 
+//
 //==========================================================
+//  LINHA VERTICAL
+//==========================================================
+//
 
 void Graphics::drawVLine(
     Canvas& canvas,
@@ -48,13 +62,13 @@ void Graphics::drawVLine(
     uint8_t y,
     uint8_t length)
 {
+    if (length == 0)
+        return;
+
     if (x >= canvas.width())
         return;
 
     if (y >= canvas.height())
-        return;
-
-    if (length == 0)
         return;
 
     if (y + length > canvas.height())
@@ -65,7 +79,12 @@ void Graphics::drawVLine(
         drawPixel(canvas, x, y + i);
     }
 }
+
+//
 //==========================================================
+//  RETÂNGULO
+//==========================================================
+//
 
 void Graphics::drawRectangle(
     Canvas& canvas,
@@ -79,22 +98,18 @@ void Graphics::drawRectangle(
 
     drawHLine(canvas, x, y, width);
 
-    drawHLine(canvas,
-              x,
-              y + height - 1,
-              width);
+    drawHLine(canvas, x, y + height - 1, width);
 
-    drawVLine(canvas,
-              x,
-              y,
-              height);
+    drawVLine(canvas, x, y, height);
 
-    drawVLine(canvas,
-              x + width - 1,
-              y,
-              height);
+    drawVLine(canvas, x + width - 1, y, height);
 }
+
+//
 //==========================================================
+//  RETÂNGULO PREENCHIDO
+//==========================================================
+//
 
 void Graphics::fillRectangle(
     Canvas& canvas,
@@ -106,8 +121,10 @@ void Graphics::fillRectangle(
     if (width == 0 || height == 0)
         return;
 
-    // Limita à área do display
-    if (x >= canvas.width() || y >= canvas.height())
+    if (x >= canvas.width())
+        return;
+
+    if (y >= canvas.height())
         return;
 
     if (x + width > canvas.width())
@@ -116,17 +133,17 @@ void Graphics::fillRectangle(
     if (y + height > canvas.height())
         height = canvas.height() - y;
 
-    // Desenha uma linha horizontal para cada linha do retângulo
     for (uint8_t row = 0; row < height; row++)
     {
-        drawHLine(
-            canvas,
-            x,
-            y + row,
-            width);
+        drawHLine(canvas, x, y + row, width);
     }
 }
+
+//
 //==========================================================
+//  BITMAP
+//==========================================================
+//
 
 void Graphics::drawBitmap(
     Canvas& canvas,
@@ -134,7 +151,8 @@ void Graphics::drawBitmap(
     uint8_t y,
     const uint8_t* bitmap,
     uint8_t width,
-    uint8_t height)
+    uint8_t height,
+    bool progmem)
 {
     if (bitmap == nullptr)
         return;
@@ -144,7 +162,12 @@ void Graphics::drawBitmap(
 
     for (uint8_t col = 0; col < width; col++)
     {
-        uint8_t data = bitmap[col];
+        uint8_t data;
+
+        if (progmem)
+            data = pgm_read_byte(bitmap + col);
+        else
+            data = bitmap[col];
 
         for (uint8_t row = 0; row < height; row++)
         {
@@ -156,5 +179,56 @@ void Graphics::drawBitmap(
                     y + row);
             }
         }
+    }
+}
+
+//
+//==========================================================
+//  CARACTERE
+//==========================================================
+//
+
+void Graphics::drawChar(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    char c)
+{
+    drawBitmap(
+        canvas,
+        x,
+        y,
+        Font::glyph(c),
+        Font::width(),
+        Font::height(),
+        true);
+}
+
+//==========================================================
+//  STRING
+//==========================================================
+
+void Graphics::drawString(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    const char* text)
+{
+    if (text == nullptr)
+        return;
+
+    while (*text)
+    {
+        drawChar(
+            canvas,
+            x,
+            y,
+            *text++);
+
+        x += Font::width() + Font::spacing();
+
+        // Não adianta continuar se já saiu da tela
+        if (x >= canvas.width())
+            break;
     }
 }
