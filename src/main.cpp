@@ -2,6 +2,7 @@
 
 #include <Canvas.h>
 #include <Display.h>
+#include <Graphics.h>
 
 void setup()
 {
@@ -9,15 +10,7 @@ void setup()
 
     canvas.clear();
 
-    // Acende alguns pixels para teste
-    canvas.setPixel(0,0);
-    canvas.setPixel(31,0);
-
-    canvas.setPixel(0,7);
-    canvas.setPixel(31,7);
-
-    canvas.setPixel(15,3);
-    canvas.setPixel(16,4);
+    Graphics::drawPixel(canvas,15,3);
 
     display.refresh(canvas);
 }
