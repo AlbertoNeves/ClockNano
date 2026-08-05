@@ -4,6 +4,18 @@
 #include <Display.h>
 #include <Graphics.h>
 
+const uint8_t smile[] =
+{
+    0b00111100,
+    0b01000010,
+    0b10100101,
+    0b10000001,
+    0b10100101,
+    0b10011001,
+    0b01000010,
+    0b00111100
+};
+
 void setup()
 {
     display.begin();
@@ -85,6 +97,18 @@ Graphics::fillRectangle(
 
 display.refresh(canvas);
 
+delay(500);
+canvas.clear();
+
+Graphics::drawBitmap(
+    canvas,
+    12,
+    0,
+    smile,
+    8,
+    8);
+
+display.refresh(canvas);
 
 }
 

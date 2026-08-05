@@ -126,3 +126,35 @@ void Graphics::fillRectangle(
             width);
     }
 }
+//==========================================================
+
+void Graphics::drawBitmap(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    const uint8_t* bitmap,
+    uint8_t width,
+    uint8_t height)
+{
+    if (bitmap == nullptr)
+        return;
+
+    if (width == 0 || height == 0)
+        return;
+
+    for (uint8_t col = 0; col < width; col++)
+    {
+        uint8_t data = bitmap[col];
+
+        for (uint8_t row = 0; row < height; row++)
+        {
+            if (data & (1 << row))
+            {
+                drawPixel(
+                    canvas,
+                    x + col,
+                    y + row);
+            }
+        }
+    }
+}

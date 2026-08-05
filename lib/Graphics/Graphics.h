@@ -39,4 +39,12 @@ public:
         uint8_t y,
         uint8_t width,
         uint8_t height);
+
+        static void drawBitmap(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    const uint8_t* bitmap,
+    uint8_t width,
+    uint8_t height);
 };
