@@ -92,7 +92,17 @@ uint8_t Canvas::getColumn(
     return m_buffer[column];
 }
 
-const uint8_t* Canvas::data() const
+uint8_t Canvas::width() const
+{
+    return Width;
+}
+
+uint8_t Canvas::height() const
+{
+    return Height;
+}
+
+const uint8_t* Canvas::frameBuffer() const
 {
     return m_buffer;
 }

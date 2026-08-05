@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Arduino.h>
+#include <stdint.h>
 #include <MD_MAX72xx.h>
 
 namespace Config
 {
-    constexpr char FW_NAME[] = "ClockNano";
+   constexpr const char* FW_NAME = "ClockNano";
     constexpr char FW_VERSION[] = "2.0.0";
 
     constexpr uint8_t DisplayModules = 4;
@@ -23,5 +23,7 @@ namespace Config
     constexpr uint8_t DisplayWidth  = 32;
     constexpr uint8_t DisplayHeight = 8;
 
-    constexpr auto Hardware = MD_MAX72XX::FC16_HW;
+    constexpr MD_MAX72XX::moduleType_t Hardware =
+    MD_MAX72XX::FC16_HW;
 }
+

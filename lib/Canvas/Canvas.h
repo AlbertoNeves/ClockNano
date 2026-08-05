@@ -60,6 +60,15 @@ public:
     /// Retorna ponteiro para o framebuffer
     const uint8_t* data() const;
 
+    /// Largura do framebuffer
+uint8_t width() const;
+
+/// Altura do framebuffer
+uint8_t height() const;
+
+/// Ponteiro para o framebuffer
+const uint8_t* frameBuffer() const;
+
 private:
 
     uint8_t m_buffer[Width];
