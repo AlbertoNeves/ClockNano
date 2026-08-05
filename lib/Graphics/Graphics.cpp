@@ -2,6 +2,7 @@
 
 #include <Canvas.h>
 
+
 //==========================================================
 
 void Graphics::drawPixel(
@@ -62,5 +63,66 @@ void Graphics::drawVLine(
     for (uint8_t i = 0; i < length; i++)
     {
         drawPixel(canvas, x, y + i);
+    }
+}
+//==========================================================
+
+void Graphics::drawRectangle(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    uint8_t width,
+    uint8_t height)
+{
+    if (width == 0 || height == 0)
+        return;
+
+    drawHLine(canvas, x, y, width);
+
+    drawHLine(canvas,
+              x,
+              y + height - 1,
+              width);
+
+    drawVLine(canvas,
+              x,
+              y,
+              height);
+
+    drawVLine(canvas,
+              x + width - 1,
+              y,
+              height);
+}
+//==========================================================
+
+void Graphics::fillRectangle(
+    Canvas& canvas,
+    uint8_t x,
+    uint8_t y,
+    uint8_t width,
+    uint8_t height)
+{
+    if (width == 0 || height == 0)
+        return;
+
+    // Limita à área do display
+    if (x >= canvas.width() || y >= canvas.height())
+        return;
+
+    if (x + width > canvas.width())
+        width = canvas.width() - x;
+
+    if (y + height > canvas.height())
+        height = canvas.height() - y;
+
+    // Desenha uma linha horizontal para cada linha do retângulo
+    for (uint8_t row = 0; row < height; row++)
+    {
+        drawHLine(
+            canvas,
+            x,
+            y + row,
+            width);
     }
 }

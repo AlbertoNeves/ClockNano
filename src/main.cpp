@@ -25,6 +25,67 @@ void setup()
     Graphics::drawVLine(canvas, 15, 0, 8);
 
     display.refresh(canvas);
+
+    canvas.clear();
+
+    delay(500);
+
+Graphics::drawRectangle(
+    canvas,
+    0,
+    0,
+    32,
+    8);
+
+display.refresh(canvas);
+
+delay(500);
+
+canvas.clear();
+
+Graphics::drawRectangle(
+    canvas,
+    8,
+    2,
+    16,
+    4);
+
+display.refresh(canvas);
+
+delay(500);
+
+canvas.clear();
+
+Graphics::fillRectangle(
+    canvas,
+    8,
+    2,
+    16,
+    4);
+
+display.refresh(canvas);
+
+delay(500);
+
+canvas.clear();
+
+Graphics::drawRectangle(
+    canvas,
+    0,
+    0,
+    32,
+    8);
+
+Graphics::fillRectangle(
+    canvas,
+    2,
+    2,
+    28,
+    4);
+
+display.refresh(canvas);
+
+
 }
 
 void loop()
