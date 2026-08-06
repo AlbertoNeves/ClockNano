@@ -9,5 +9,6 @@ namespace ClockView
     void draw(
         Canvas& canvas,
         uint8_t hour,
-        uint8_t minute);
+        uint8_t minute,
+        bool showColon = true);
 }

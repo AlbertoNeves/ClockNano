@@ -74,9 +74,9 @@ uint8_t Display::brightness() const
 
 //==========================================================
 
-void Display::refresh(const Canvas &canvas)
+void Display::refresh(const Canvas& canvas)
 {
-    const uint8_t *frame = canvas.frameBuffer();
+    const uint8_t* frame = canvas.frameBuffer();
 
     for (uint8_t x = 0; x < canvas.width(); x++)
     {

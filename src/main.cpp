@@ -2,35 +2,78 @@
 
 #include <Canvas.h>
 #include <Display.h>
-#include <Graphics.h>
+#include <ClockView.h>
+#include <RTC.h>
 
-const uint8_t smile[] =
-    {
-        0b00111100,
-        0b01000010,
-        0b10100101,
-        0b10000001,
-        0b10100101,
-        0b10011001,
-        0b01000010,
-        0b00111100};
+//----------------------------------------------------------
+// Objetos globais
+//----------------------------------------------------------
+
+Canvas canvas;
+
+//----------------------------------------------------------
+// Protótipos
+//----------------------------------------------------------
+
+static void setupHardware();
+static void updateClock();
+
+//----------------------------------------------------------
+// setup()
+//----------------------------------------------------------
 
 void setup()
 {
-
-display.begin();
-
-canvas.clear();
-
-Graphics::drawStringCentered(
-    canvas,
-    0,
-    "12:34");
-
-display.refresh(canvas);
-
+    setupHardware();
 }
+
+//----------------------------------------------------------
+// loop()
+//----------------------------------------------------------
 
 void loop()
 {
+    updateClock();
+}
+
+//----------------------------------------------------------
+// Inicialização do hardware
+//----------------------------------------------------------
+
+static void setupHardware()
+{
+    display.begin();
+
+    RTC::begin();
+
+    canvas.clear();
+}
+
+//----------------------------------------------------------
+// Atualização do relógio
+//----------------------------------------------------------
+
+static void updateClock()
+{
+    static uint8_t lastSecond = 255;
+
+    RtcDateTime rtcNow;
+
+    if (!RTC::read(rtcNow))
+        return;
+
+    if (rtcNow.second == lastSecond)
+        return;
+
+    lastSecond = rtcNow.second;
+
+    canvas.clear();
+
+    ClockView::draw(
+        canvas,
+        rtcNow.hour,
+        rtcNow.minute,
+        (rtcNow.second & 1) == 0);
+
+    display.refresh(canvas);
 }

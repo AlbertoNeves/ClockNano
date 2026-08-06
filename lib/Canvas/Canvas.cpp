@@ -2,7 +2,6 @@
 
 #include <string.h>
 
-Canvas canvas;
 
 Canvas::Canvas()
 {
