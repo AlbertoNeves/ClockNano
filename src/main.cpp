@@ -17,17 +17,18 @@ const uint8_t smile[] =
 
 void setup()
 {
-    display.begin();
+
+display.begin();
 
 canvas.clear();
 
-Graphics::drawString(
+Graphics::drawStringCentered(
     canvas,
     0,
-    0,
-    "23:59");
+    "12:34");
 
 display.refresh(canvas);
+
 }
 
 void loop()

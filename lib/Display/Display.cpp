@@ -21,8 +21,7 @@ Display display;
 
 //==========================================================
 
-Display::Display() :
-    m_brightness(3)
+Display::Display() : m_brightness(3)
 {
 }
 
@@ -56,7 +55,7 @@ void Display::clear()
 
 void Display::setBrightness(uint8_t level)
 {
-    if(level > 15)
+    if (level > 15)
         level = 15;
 
     m_brightness = level;
@@ -75,15 +74,23 @@ uint8_t Display::brightness() const
 
 //==========================================================
 
-void Display::refresh(const Canvas& canvas)
+void Display::refresh(const Canvas &canvas)
 {
-    const uint8_t* frame = canvas.frameBuffer();
+    const uint8_t *frame = canvas.frameBuffer();
 
-    for(uint8_t x=0; x<canvas.width(); x++)
+    for (uint8_t x = 0; x < canvas.width(); x++)
     {
-        mx.setColumn(
-            x,
-            frame[x]);
+        uint8_t column = frame[x];
+
+        for (uint8_t y = 0; y < canvas.height(); y++)
+        {
+            bool pixel = column & (1 << y);
+
+            mx.setPoint(
+                y,
+                31 - x,
+                pixel);
+        }
     }
 
     mx.update();

@@ -23,7 +23,6 @@ namespace Config
     constexpr uint8_t DisplayWidth  = 32;
     constexpr uint8_t DisplayHeight = 8;
 
-    constexpr MD_MAX72XX::moduleType_t Hardware =
-    MD_MAX72XX::FC16_HW;
+   constexpr auto Hardware = MD_MAX72XX::FC16_HW;
 }
 

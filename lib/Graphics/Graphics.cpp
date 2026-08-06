@@ -12,7 +12,7 @@
 //
 
 void Graphics::drawPixel(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     bool state)
@@ -27,7 +27,7 @@ void Graphics::drawPixel(
 //
 
 void Graphics::drawHLine(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     uint8_t length)
@@ -57,7 +57,7 @@ void Graphics::drawHLine(
 //
 
 void Graphics::drawVLine(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     uint8_t length)
@@ -87,7 +87,7 @@ void Graphics::drawVLine(
 //
 
 void Graphics::drawRectangle(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     uint8_t width,
@@ -112,7 +112,7 @@ void Graphics::drawRectangle(
 //
 
 void Graphics::fillRectangle(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     uint8_t width,
@@ -146,10 +146,10 @@ void Graphics::fillRectangle(
 //
 
 void Graphics::drawBitmap(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
-    const uint8_t* bitmap,
+    const uint8_t *bitmap,
     uint8_t width,
     uint8_t height,
     bool progmem)
@@ -189,7 +189,7 @@ void Graphics::drawBitmap(
 //
 
 void Graphics::drawChar(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
     char c)
@@ -209,10 +209,10 @@ void Graphics::drawChar(
 //==========================================================
 
 void Graphics::drawString(
-    Canvas& canvas,
+    Canvas &canvas,
     uint8_t x,
     uint8_t y,
-    const char* text)
+    const char *text)
 {
     if (text == nullptr)
         return;
@@ -225,10 +225,68 @@ void Graphics::drawString(
             y,
             *text++);
 
-        x += Font::width() + Font::spacing();
+        x += charWidth();
 
         // Não adianta continuar se já saiu da tela
         if (x >= canvas.width())
             break;
     }
+}
+//==========================================================
+//  CHAR WIDTH
+//==========================================================
+
+uint8_t Graphics::charWidth()
+{
+    return Font::width() + Font::spacing();
+}
+//==========================================================
+//  TEXT WIDTH
+//==========================================================
+
+uint8_t Graphics::textWidth(const char *text)
+{
+    if (text == nullptr)
+        return 0;
+
+    uint8_t len = 0;
+
+    while (*text++)
+        len++;
+
+    if (len == 0)
+        return 0;
+
+    return (len * Font::width()) +
+           ((len - 1) * Font::spacing());
+}
+//==========================================================
+//  CENTER X
+//==========================================================
+
+uint8_t Graphics::centerX(
+    const Canvas &canvas,
+    const char *text)
+{
+    uint8_t w = textWidth(text);
+
+    if (w >= canvas.width())
+        return 0;
+
+    return (canvas.width() - w) / 2;
+}
+//==========================================================
+//  STRING CENTERED
+//==========================================================
+
+void Graphics::drawStringCentered(
+    Canvas &canvas,
+    uint8_t y,
+    const char *text)
+{
+    drawString(
+        canvas,
+        centerX(canvas, text),
+        y,
+        text);
 }
