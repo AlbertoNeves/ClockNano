@@ -1,5 +1,5 @@
 #include <Arduino.h>
-
+#include <Buttons.h>
 #include <Canvas.h>
 #include <Display.h>
 #include <ClockView.h>
@@ -24,16 +24,8 @@ static void updateClock();
 
 void setup()
 {
+    Serial.begin(115200);
     setupHardware();
-}
-
-//----------------------------------------------------------
-// loop()
-//----------------------------------------------------------
-
-void loop()
-{
-    updateClock();
 }
 
 //----------------------------------------------------------
@@ -47,6 +39,8 @@ static void setupHardware()
     RTC::begin();
 
     canvas.clear();
+
+    Buttons::begin();
 }
 
 //----------------------------------------------------------
@@ -76,4 +70,80 @@ static void updateClock()
         (rtcNow.second & 1) == 0);
 
     display.refresh(canvas);
+}
+//==========================================================
+//           testButtons()
+//==========================================================
+void testButtons()
+{
+    ButtonEvent event;
+
+    if (Buttons::read(event))
+    {
+        Serial.print("Button: ");
+
+        switch (event.button)
+        {
+        case ButtonId::Minus:
+
+            Serial.print("Minus");
+            break;
+
+        case ButtonId::Ok:
+
+            Serial.print("OK");
+            break;
+
+        case ButtonId::Plus:
+
+            Serial.print("Plus");
+            break;
+
+        default:
+
+            Serial.print("None");
+            break;
+        }
+
+        Serial.print("  Event: ");
+
+        switch (event.type)
+        {
+        case ButtonEventType::Click:
+
+            Serial.println("Click");
+            break;
+
+        case ButtonEventType::LongPress:
+
+            Serial.println("LongPress");
+            break;
+
+        case ButtonEventType::Repeat:
+
+            Serial.println("Repeat");
+            break;
+
+        case ButtonEventType::Release:
+
+            Serial.println("Release");
+            break;
+
+        default:
+
+            Serial.println("None");
+            break;
+        }
+    }
+}
+
+//----------------------------------------------------------
+// loop()
+//----------------------------------------------------------
+
+void loop()
+{
+    updateClock();
+    Buttons::update();
+      testButtons();
 }
