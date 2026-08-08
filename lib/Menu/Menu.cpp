@@ -23,9 +23,9 @@ namespace
     // MenuRenderer
     //==========================================================
 
-    constexpr uint8_t AnimationStep = 0;
+    constexpr uint8_t AnimationStep = 1;
 
-    constexpr uint16_t AnimationInterval = 0;
+    constexpr uint16_t AnimationInterval = 20;
 
     //==========================================================
     // Máquina de estados do Menu
@@ -161,6 +161,7 @@ namespace
         bool m_directionNext = true;
 
         int16_t m_x = 0;
+        int16_t m_targetX = 0;
 
         uint32_t m_lastStep = 0;
     };
@@ -205,6 +206,7 @@ namespace
         m_directionNext = true;
 
         m_x = 0;
+        m_targetX = 0;
 
         m_lastStep = millis();
     }
@@ -234,7 +236,10 @@ namespace
 
         m_animating = true;
 
-        m_x = 32;
+        m_targetX = centeredX(
+            items[currentIndex].name);
+
+        m_x = m_targetX + 32;
 
         m_lastStep = millis();
     }
@@ -247,7 +252,10 @@ namespace
 
         m_animating = true;
 
-        m_x = -32;
+        m_targetX = centeredX(
+            items[currentIndex].name);
+
+        m_x = m_targetX - 32;
 
         m_lastStep = millis();
     }
@@ -270,17 +278,17 @@ namespace
         m_lastStep = now;
 
         //------------------------------------------------------
-        // Próximo item:
-        //
-        // entra pela direita
+        // Próximo item
+        // Entra pela direita
         //------------------------------------------------------
 
         if (m_directionNext)
         {
             m_x -= AnimationStep;
 
-            if (m_x <= 0)
+            if (m_x <= m_targetX)
             {
+                m_x = m_targetX;
                 m_animating = false;
             }
 
@@ -288,19 +296,18 @@ namespace
         }
 
         //------------------------------------------------------
-        // Item anterior:
-        //
-        // entra pela esquerda
+        // Item anterior
+        // Entra pela esquerda
         //------------------------------------------------------
 
         m_x += AnimationStep;
 
-        if (m_x >= 0)
+        if (m_x >= m_targetX)
         {
+            m_x = m_targetX;
             m_animating = false;
         }
     }
-
     //----------------------------------------------------------
 
     void MenuRenderer::drawCharClipped(
@@ -440,194 +447,196 @@ namespace
     }
     //----------------------------------------------------------
 
-   void MenuRenderer::drawEditing(
-    Canvas &canvas,
-    const char *label,
-    int16_t value)
-{
-    if (label == nullptr)
-        return;
-
-    //------------------------------------------------------
-    // Converte o valor para texto
-    //------------------------------------------------------
-
-    char valueText[8];
-
-    snprintf(
-        valueText,
-        sizeof(valueText),
-        "%d",
-        value);
-
-    //------------------------------------------------------
-    // Dimensões da fonte 5x3
-    //------------------------------------------------------
-
-    const uint8_t charWidth =
-        Font::smallWidth();
-
-    const uint8_t spacing =
-        Font::smallSpacing();
-
-    //------------------------------------------------------
-    // Calcula largura do label
-    //------------------------------------------------------
-
-    uint8_t labelLength = 0;
-
-    while (label[labelLength] != '\0')
-        labelLength++;
-
-    uint8_t valueLength = 0;
-
-    while (valueText[valueLength] != '\0')
-        valueLength++;
-
-    //------------------------------------------------------
-    // Largura total
-    //------------------------------------------------------
-
-    const uint8_t labelWidth =
-        (labelLength * charWidth) +
-        ((labelLength > 0)
-            ? ((labelLength - 1) * spacing)
-            : 0);
-
-    const uint8_t valueWidth =
-        (valueLength * charWidth) +
-        ((valueLength > 0)
-            ? ((valueLength - 1) * spacing)
-            : 0);
-
-    //------------------------------------------------------
-    // Espaço entre nome e valor
-    //------------------------------------------------------
-
-    constexpr uint8_t valueGap = 2;
-
-    const uint8_t totalWidth =
-        labelWidth +
-        valueGap +
-        valueWidth;
-
-    //------------------------------------------------------
-    // Centraliza o conjunto inteiro
-    //------------------------------------------------------
-
-    int16_t x =
-        (canvas.width() - totalWidth) / 2;
-
-    //------------------------------------------------------
-    // Centralização vertical da fonte 5x3
-    //------------------------------------------------------
-
-    const uint8_t y =
-        (canvas.height() -
-         Font::smallHeight()) / 2;
-
-    //------------------------------------------------------
-    // Desenha LABEL
-    //------------------------------------------------------
-
-    const uint8_t *glyph;
-
-    for (uint8_t i = 0;
-         i < labelLength;
-         i++)
+    void MenuRenderer::drawEditing(
+        Canvas &canvas,
+        const char *label,
+        int16_t value)
     {
-        glyph =
-            Font::smallGlyph(label[i]);
+        if (label == nullptr)
+            return;
 
-        if (glyph != nullptr)
+        //------------------------------------------------------
+        // Converte o valor para texto
+        //------------------------------------------------------
+
+        char valueText[8];
+
+        snprintf(
+            valueText,
+            sizeof(valueText),
+            "%d",
+            value);
+
+        //------------------------------------------------------
+        // Dimensões da fonte 5x3
+        //------------------------------------------------------
+
+        const uint8_t charWidth =
+            Font::smallWidth();
+
+        const uint8_t spacing =
+            Font::smallSpacing();
+
+        //------------------------------------------------------
+        // Calcula largura do label
+        //------------------------------------------------------
+
+        uint8_t labelLength = 0;
+
+        while (label[labelLength] != '\0')
+            labelLength++;
+
+        uint8_t valueLength = 0;
+
+        while (valueText[valueLength] != '\0')
+            valueLength++;
+
+        //------------------------------------------------------
+        // Largura total
+        //------------------------------------------------------
+
+        const uint8_t labelWidth =
+            (labelLength * charWidth) +
+            ((labelLength > 0)
+                 ? ((labelLength - 1) * spacing)
+                 : 0);
+
+        const uint8_t valueWidth =
+            (valueLength * charWidth) +
+            ((valueLength > 0)
+                 ? ((valueLength - 1) * spacing)
+                 : 0);
+
+        //------------------------------------------------------
+        // Espaço entre nome e valor
+        //------------------------------------------------------
+
+        constexpr uint8_t valueGap = 2;
+
+        const uint8_t totalWidth =
+            labelWidth +
+            valueGap +
+            valueWidth;
+
+        //------------------------------------------------------
+        // Centraliza o conjunto inteiro
+        //------------------------------------------------------
+
+        int16_t x =
+            (canvas.width() - totalWidth) / 2;
+
+        //------------------------------------------------------
+        // Centralização vertical da fonte 5x3
+        //------------------------------------------------------
+
+        const uint8_t y =
+            (canvas.height() -
+             Font::smallHeight()) /
+            2;
+
+        //------------------------------------------------------
+        // Desenha LABEL
+        //------------------------------------------------------
+
+        const uint8_t *glyph;
+
+        for (uint8_t i = 0;
+             i < labelLength;
+             i++)
         {
-            for (uint8_t col = 0;
-                 col < charWidth;
-                 col++)
-            {
-                uint8_t data =
-                    pgm_read_byte(
-                        glyph + col);
+            glyph =
+                Font::smallGlyph(label[i]);
 
-                for (uint8_t row = 0;
-                     row < Font::smallHeight();
-                     row++)
+            if (glyph != nullptr)
+            {
+                for (uint8_t col = 0;
+                     col < charWidth;
+                     col++)
                 {
-                    if (data & (1 << row))
+                    uint8_t data =
+                        pgm_read_byte(
+                            glyph + col);
+
+                    for (uint8_t row = 0;
+                         row < Font::smallHeight();
+                         row++)
                     {
-                        canvas.setPixel(
-                            x + col,
-                            y + row,
-                            true);
+                        if (data & (1 << row))
+                        {
+                            canvas.setPixel(
+                                x + col,
+                                y + row,
+                                true);
+                        }
                     }
                 }
             }
+
+            x += charWidth + spacing;
         }
 
-        x += charWidth + spacing;
-    }
+        //------------------------------------------------------
+        // Espaço entre LABEL e VALOR
+        //------------------------------------------------------
 
-    //------------------------------------------------------
-    // Espaço entre LABEL e VALOR
-    //------------------------------------------------------
+        x += valueGap;
 
-    x += valueGap;
+        //------------------------------------------------------
+        // Desenha VALUE
+        //------------------------------------------------------
 
-    //------------------------------------------------------
-    // Desenha VALUE
-    //------------------------------------------------------
-
-    for (uint8_t i = 0;
-         i < valueLength;
-         i++)
-    {
-        glyph =
-            Font::smallGlyph(valueText[i]);
-
-        if (glyph != nullptr)
+        for (uint8_t i = 0;
+             i < valueLength;
+             i++)
         {
-            for (uint8_t col = 0;
-                 col < charWidth;
-                 col++)
-            {
-                uint8_t data =
-                    pgm_read_byte(
-                        glyph + col);
+            glyph =
+                Font::smallGlyph(valueText[i]);
 
-                for (uint8_t row = 0;
-                     row < Font::smallHeight();
-                     row++)
+            if (glyph != nullptr)
+            {
+                for (uint8_t col = 0;
+                     col < charWidth;
+                     col++)
                 {
-                    if (data & (1 << row))
+                    uint8_t data =
+                        pgm_read_byte(
+                            glyph + col);
+
+                    for (uint8_t row = 0;
+                         row < Font::smallHeight();
+                         row++)
                     {
-                        canvas.setPixel(
-                            x + col,
-                            y + row,
-                            true);
+                        if (data & (1 << row))
+                        {
+                            canvas.setPixel(
+                                x + col,
+                                y + row,
+                                true);
+                        }
                     }
                 }
             }
-        }
 
-        x += charWidth + spacing;
+            x += charWidth + spacing;
+        }
     }
-}
     //==========================================================
     // Navegação
     //==========================================================
 
-void nextItem()
-{
-    if (itemCount == 0)
-        return;
+    void nextItem()
+    {
+        if (itemCount == 0)
+            return;
 
-    currentIndex++;
+        currentIndex++;
 
-    if (currentIndex >= itemCount)
-        currentIndex = 0;
-}
+        if (currentIndex >= itemCount)
+            currentIndex = 0;
+
+        renderer.startNext();
+    }
     //----------------------------------------------------------
-
 void previousItem()
 {
     if (itemCount == 0)
@@ -638,6 +647,8 @@ void previousItem()
             itemCount - 1;
     else
         currentIndex--;
+
+    renderer.startPrevious();
 }
 
     //==========================================================
