@@ -1,0 +1,143 @@
+ClockNano Framework 1.0
+Coding Standard
+
+Será um documento de engenharia do projeto.
+
+Minha proposta é organizá-lo assim:
+
+ClockNano Framework 1.0
+Coding Standard
+
+1. Filosofia do Projeto
+
+2. Organização do Framework
+
+3. Arquitetura
+
+4. Convenções de Código
+
+5. Regras de Projeto
+
+6. Estrutura das Bibliotecas
+
+7. Testes
+
+8. Git Workflow
+
+9. Versionamento
+
+10. Roadmap
+
+E alguns dos princípios que quero registrar desde a primeira versão:
+
+1. Filosofia
+
+Código deve ser legível antes de ser inteligente.
+
+2. Uma responsabilidade por função
+
+Aplicação rigorosa do SRP (Single Responsibility Principle).
+
+Cada função deve fazer apenas uma tarefa.
+
+3. Arquitetura antes da implementação
+
+Nunca escrever código antes de definir a arquitetura.
+
+4. API pequena
+
+Cada biblioteca deve expor apenas o mínimo necessário.
+
+Exemplo:
+
+Display.begin();
+
+Display.refresh();
+
+Display.clear();
+
+Nada mais.
+
+5. Compilação limpa
+
+Não aceitar:
+
+warnings;
+deprecated;
+FIXME;
+TODO esquecidos.
+6. Código previsível
+
+Sempre a mesma ordem:
+
+public
+
+private methods
+
+private members
+7. Organização dos arquivos
+Library
+
+Library.h
+
+Library.cpp
+
+library.json
+
+README.md
+8. Comentários
+
+Comentários devem explicar o porquê, nunca repetir o que o código já diz.
+
+Exemplo ruim:
+
+counter++;
+// Incrementa contador
+
+Exemplo bom:
+
+// Evita repetição do evento durante o debounce.
+9. Testes
+
+Nenhuma biblioteca é considerada pronta sem teste dedicado.
+
+FrameworkTests
+
+Canvas
+
+Graphics
+
+Display
+
+RTC
+
+Buttons
+
+...
+10. Git
+
+Cada commit deve ser:
+
+pequeno;
+compilável;
+testado.
+11. Versionamento
+
+Usaremos SemVer adaptado ao projeto:
+
+0.x.y
+
+x = nova funcionalidade
+
+y = correções/refatorações
+
+Quando o Framework atingir estabilidade:
+
+1.0.0
+12. Objetivo Final
+
+Quero colocar esta frase na última página:
+
+"ClockNano Framework não é um relógio digital. É um framework para aplicações embarcadas em AVR, desenvolvido com foco em simplicidade, legibilidade, modularidade e reutilização."
+
+Acho que ela resume exatamente o que estamos construindo.
