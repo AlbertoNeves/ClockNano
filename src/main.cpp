@@ -5,6 +5,7 @@
 #include <ClockView.h>
 #include <RTC.h>
 #include <Menu.h>
+#include <ConfigEEPROM.h>
 
 //----------------------------------------------------------
 // Objetos globais
@@ -36,6 +37,17 @@ void setup()
 static void setupHardware()
 {
     display.begin();
+
+    uint8_t brightness =
+
+        ConfigEEPROM::loadBrightness();
+
+
+    Serial.print("BRILHO LIDO DA EEPROM: ");
+    Serial.println(brightness);
+
+    display.setBrightness(brightness);
+    
 
     RTC::begin();
 
