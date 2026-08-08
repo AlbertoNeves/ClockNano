@@ -12,7 +12,7 @@ namespace
 
     namespace Settings
     {
-        constexpr uint16_t DebounceTime = 30;
+        constexpr uint16_t DebounceTime = 15;
         constexpr uint16_t LongPressTime = 1000;
         constexpr uint16_t RepeatDelay = 250;
         constexpr uint16_t RepeatPeriod = 120;
@@ -142,6 +142,9 @@ namespace
 
             if (edge == Edge::Release)
             {
+                Serial.print("RELEASE -> CLICK  ");
+                Serial.println(ctx.now - m_pressTime);
+                
                 createEvent(
                     event,
                     ButtonEventType::Click,

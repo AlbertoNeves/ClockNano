@@ -31,6 +31,13 @@ bool Display::begin()
 {
     mx.begin();
 
+    // Desliga atualização automática.
+    // As alterações serão enviadas ao MAX7219
+    // somente quando mx.update() for chamado.
+    mx.control(
+        MD_MAX72XX::UPDATE,
+        MD_MAX72XX::OFF);
+
     mx.control(
         MD_MAX72XX::INTENSITY,
         m_brightness);
@@ -73,24 +80,15 @@ uint8_t Display::brightness() const
 }
 
 //==========================================================
-
 void Display::refresh(const Canvas& canvas)
 {
     const uint8_t* frame = canvas.frameBuffer();
 
     for (uint8_t x = 0; x < canvas.width(); x++)
     {
-        uint8_t column = frame[x];
-
-        for (uint8_t y = 0; y < canvas.height(); y++)
-        {
-            bool pixel = column & (1 << y);
-
-            mx.setPoint(
-                y,
-                31 - x,
-                pixel);
-        }
+        mx.setColumn(
+            31 - x,
+            frame[x]);
     }
 
     mx.update();

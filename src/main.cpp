@@ -66,7 +66,7 @@ static void setupHardware()
         "BRILHO",
         {true,
          0,
-         15,
+         3,
          1});
 
     Menu::addItem(
@@ -127,7 +127,26 @@ void loop()
 
     if (Buttons::read(event))
     {
+        if (Buttons::read(event))
+        {
+            Serial.print("EVENT -> ");
+            Serial.println(millis());
+
+            Menu::update(event);
+
+            Serial.print("MENU UPDATE -> ");
+            Serial.println(millis());
+        }
+        //----------------------------------
         Menu::update(event);
+        Serial.print("EVENTO: ");
+        Serial.print(static_cast<uint8_t>(event.type));
+
+        Serial.print("  BUTTON: ");
+        Serial.print(static_cast<uint8_t>(event.button));
+
+        Serial.print("  TIME: ");
+        Serial.println(event.timestamp);
     }
 
     //------------------------------------------------------
@@ -136,48 +155,47 @@ void loop()
 
     MenuResult result;
 
-if (Menu::readResult(result))
-{
-    //------------------------------------------------------
-    // Debug
-    //------------------------------------------------------
-
-    Serial.print("MenuResult: ");
-
-    Serial.print(
-        static_cast<uint8_t>(result.type));
-
-    Serial.print("  Item: ");
-
-    Serial.print(
-        static_cast<uint8_t>(result.item));
-
-    Serial.print("  Valor: ");
-
-    Serial.println(result.value);
-
-
-    //------------------------------------------------------
-    // Hardware - BRILHO
-    //------------------------------------------------------
-
-    if (result.item == MenuItemId::Brightness)
+    if (Menu::readResult(result))
     {
-        if (result.type == MenuResultType::Changed ||
-            result.type == MenuResultType::Confirmed)
+        //------------------------------------------------------
+        // Debug
+        //------------------------------------------------------
+
+        Serial.print("MenuResult: ");
+
+        Serial.print(
+            static_cast<uint8_t>(result.type));
+
+        Serial.print("  Item: ");
+
+        Serial.print(
+            static_cast<uint8_t>(result.item));
+
+        Serial.print("  Valor: ");
+
+        Serial.println(result.value);
+
+        //------------------------------------------------------
+        // Hardware - BRILHO
+        //------------------------------------------------------
+
+        if (result.item == MenuItemId::Brightness)
         {
-            display.setBrightness(
-                static_cast<uint8_t>(result.value));
+            if (result.type == MenuResultType::Changed ||
+                result.type == MenuResultType::Confirmed)
+            {
+                display.setBrightness(
+                    static_cast<uint8_t>(result.value));
+            }
         }
     }
-}
     //------------------------------------------------------
     // Menu
     //------------------------------------------------------
 
     if (Menu::state() != MenuState::Closed)
     {
-        static uint32_t lastMenuFrame = 0;
+        static uint32_t lastMenuFrame = 25;
 
         uint32_t now = millis();
 
@@ -185,13 +203,16 @@ if (Menu::readResult(result))
         // Atualização do frame
         //--------------------------------------------------
 
-        if ((now - lastMenuFrame) >= 25)
+        if ((now - lastMenuFrame) >= 10)
         {
             lastMenuFrame = now;
 
             Menu::draw(canvas);
 
             display.refresh(canvas);
+
+            Serial.print("DISPLAY REFRESH -> ");
+            Serial.println(millis());
         }
 
         return;

@@ -23,9 +23,9 @@ namespace
     // MenuRenderer
     //==========================================================
 
-    constexpr uint8_t AnimationStep = 1;
+    constexpr uint8_t AnimationStep = 0;
 
-    constexpr uint16_t AnimationInterval = 25;
+    constexpr uint16_t AnimationInterval = 0;
 
     //==========================================================
     // Máquina de estados do Menu
@@ -616,34 +616,29 @@ namespace
     // Navegação
     //==========================================================
 
-    void nextItem()
-    {
-        if (itemCount == 0)
-            return;
+void nextItem()
+{
+    if (itemCount == 0)
+        return;
 
-        currentIndex++;
+    currentIndex++;
 
-        if (currentIndex >= itemCount)
-            currentIndex = 0;
-
-        renderer.startNext();
-    }
-
+    if (currentIndex >= itemCount)
+        currentIndex = 0;
+}
     //----------------------------------------------------------
 
-    void previousItem()
-    {
-        if (itemCount == 0)
-            return;
+void previousItem()
+{
+    if (itemCount == 0)
+        return;
 
-        if (currentIndex == 0)
-            currentIndex =
-                itemCount - 1;
-        else
-            currentIndex--;
-
-        renderer.startPrevious();
-    }
+    if (currentIndex == 0)
+        currentIndex =
+            itemCount - 1;
+    else
+        currentIndex--;
+}
 
     //==========================================================
     // Abrir Menu
