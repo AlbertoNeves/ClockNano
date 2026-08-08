@@ -12,5 +12,12 @@ namespace Font
     uint8_t spacing();
 
     // Retorna ponteiro para o bitmap do caractere
-    const uint8_t* glyph(char c);
+    const uint8_t *glyph(char c);
+    
+// Dimensões da fonte pequena
+    uint8_t smallWidth();
+    uint8_t smallHeight();
+    uint8_t smallSpacing();
+
+    const uint8_t *smallGlyph(char c);
 }

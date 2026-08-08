@@ -63,7 +63,11 @@ static void setupHardware()
 
     Menu::addItem(
         MenuItemId::Brightness,
-        "BRILHO");
+        "BRILHO",
+        {true,
+         0,
+         15,
+         1});
 
     Menu::addItem(
         MenuItemId::Contrast,
@@ -115,7 +119,6 @@ void loop()
 
     Buttons::update();
 
-
     //------------------------------------------------------
     // Consumir evento
     //------------------------------------------------------
@@ -127,7 +130,47 @@ void loop()
         Menu::update(event);
     }
 
+    //------------------------------------------------------
+    // Teste da camada de edição
+    //------------------------------------------------------
 
+    MenuResult result;
+
+if (Menu::readResult(result))
+{
+    //------------------------------------------------------
+    // Debug
+    //------------------------------------------------------
+
+    Serial.print("MenuResult: ");
+
+    Serial.print(
+        static_cast<uint8_t>(result.type));
+
+    Serial.print("  Item: ");
+
+    Serial.print(
+        static_cast<uint8_t>(result.item));
+
+    Serial.print("  Valor: ");
+
+    Serial.println(result.value);
+
+
+    //------------------------------------------------------
+    // Hardware - BRILHO
+    //------------------------------------------------------
+
+    if (result.item == MenuItemId::Brightness)
+    {
+        if (result.type == MenuResultType::Changed ||
+            result.type == MenuResultType::Confirmed)
+        {
+            display.setBrightness(
+                static_cast<uint8_t>(result.value));
+        }
+    }
+}
     //------------------------------------------------------
     // Menu
     //------------------------------------------------------
@@ -137,7 +180,6 @@ void loop()
         static uint32_t lastMenuFrame = 0;
 
         uint32_t now = millis();
-
 
         //--------------------------------------------------
         // Atualização do frame
@@ -154,7 +196,6 @@ void loop()
 
         return;
     }
-
 
     //------------------------------------------------------
     // Relógio

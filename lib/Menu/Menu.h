@@ -1,35 +1,10 @@
-#pragma once
+#ifndef MENU_H
+#define MENU_H
 
-#include <Arduino.h>
+#include <stdint.h>
 
 #include <Buttons.h>
 #include <Canvas.h>
-
-//==========================================================
-// ClockNano Framework
-// Menu Framework v1.0
-//==========================================================
-//
-// Menu horizontal para display 32x8.
-//
-// Navegação:
-//
-//     +       próximo item
-//     -       item anterior
-//     OK      selecionar
-//
-// Entrada:
-//
-//     OK mantido aproximadamente 2 segundos
-//
-// Ajuste:
-//
-//     +       aumenta
-//     -       diminui
-//     OK      confirma
-//
-//==========================================================
-
 
 //==========================================================
 // Identificação dos itens
@@ -48,14 +23,26 @@ enum class MenuItemId : uint8_t
     About
 };
 
+//==========================================================
+// Estado do Menu
+//==========================================================
+
+enum class MenuState : uint8_t
+{
+    Closed,
+
+    Browsing,
+
+    Editing
+};
 
 //==========================================================
-// Resultado produzido pelo Menu
+// Resultado do Menu
 //==========================================================
 
 enum class MenuResultType : uint8_t
 {
-    None = 0,
+    None,
 
     Open,
 
@@ -63,11 +50,46 @@ enum class MenuResultType : uint8_t
 
     Changed,
 
-    Confirmed,
-
-    Back
+    Confirmed
 };
 
+//==========================================================
+// Configuração da edição
+//==========================================================
+//
+// Esta estrutura não conhece o significado do valor.
+//
+// Ela somente define as regras:
+//
+// editable = item pode ser editado
+// minimum  = limite inferior
+// maximum  = limite superior
+// step     = incremento/decremento
+//
+
+struct MenuEditConfig
+{
+    bool editable;
+
+    int16_t minimum;
+
+    int16_t maximum;
+
+    int16_t step;
+};
+
+//==========================================================
+// Item do Menu
+//==========================================================
+
+struct MenuItem
+{
+    MenuItemId id;
+
+    const char *name;
+
+    MenuEditConfig edit;
+};
 
 //==========================================================
 // Resultado
@@ -82,35 +104,6 @@ struct MenuResult
     int16_t value;
 };
 
-
-//==========================================================
-// Estado interno do Menu
-//==========================================================
-
-enum class MenuState : uint8_t
-{
-    Closed,
-
-    Opening,
-
-    Browsing,
-
-    Editing
-};
-
-
-//==========================================================
-// Item do Menu
-//==========================================================
-
-struct MenuItem
-{
-    MenuItemId id;
-
-    const char* name;
-};
-
-
 //==========================================================
 // API pública
 //==========================================================
@@ -124,85 +117,83 @@ namespace Menu
 
     bool begin();
 
-
     //------------------------------------------------------
-    // Remove todos os itens
+    // Limpa todos os itens
     //------------------------------------------------------
 
     void clear();
 
-
     //------------------------------------------------------
-    // Adiciona um item
+    // Adiciona item sem edição
+    //
+    // Mantém compatibilidade com a API anterior.
     //------------------------------------------------------
 
     bool addItem(
         MenuItemId id,
-        const char* name);
-
+        const char *name);
 
     //------------------------------------------------------
-    // Atualiza o Menu
-    //
-    // Deve ser chamada quando houver ButtonEvent.
+    // Adiciona item com configuração de edição
+    //------------------------------------------------------
+
+    bool addItem(
+        MenuItemId id,
+        const char *name,
+        const MenuEditConfig &edit);
+
+    //------------------------------------------------------
+    // Recebe eventos dos Buttons
     //------------------------------------------------------
 
     void update(
-        const ButtonEvent& event);
-
+        const ButtonEvent &event);
 
     //------------------------------------------------------
-    // Renderiza o Menu no Canvas
+    // Desenha o Menu
     //------------------------------------------------------
 
     void draw(
-        Canvas& canvas);
-
+        Canvas &canvas);
 
     //------------------------------------------------------
-    // Lê o resultado produzido pelo Menu
+    // Lê resultado pendente
     //------------------------------------------------------
 
     bool readResult(
-        MenuResult& result);
-
+        MenuResult &result);
 
     //------------------------------------------------------
-    // Retorna estado atual
+    // Estado atual
     //------------------------------------------------------
 
     MenuState state();
 
-
     //------------------------------------------------------
-    // Retorna item atualmente selecionado
+    // Item atualmente selecionado
     //------------------------------------------------------
 
     MenuItemId selected();
 
-
     //------------------------------------------------------
-    // Inicia o modo de ajuste do item atual
+    // Inicia edição do valor atual
     //------------------------------------------------------
 
     void beginEdit(
         int16_t value);
 
-
     //------------------------------------------------------
-    // Define valor atual do ajuste
+    // Define valor atual
     //------------------------------------------------------
 
     void setValue(
         int16_t value);
 
-
     //------------------------------------------------------
-    // Retorna valor atual do ajuste
+    // Retorna valor atual
     //------------------------------------------------------
 
     int16_t value();
-
 
     //------------------------------------------------------
     // Fecha o Menu
@@ -211,3 +202,5 @@ namespace Menu
     void close();
 
 }
+
+#endif

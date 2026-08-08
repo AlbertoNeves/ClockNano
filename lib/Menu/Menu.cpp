@@ -67,6 +67,41 @@ namespace
             MenuResultType::None,
             MenuItemId::None,
             0};
+    //==========================================================
+    void increaseValue()
+    {
+        const MenuEditConfig &edit =
+            items[currentIndex].edit;
+
+        if (!edit.editable)
+            return;
+
+        int16_t next =
+            currentValue + edit.step;
+
+        if (next > edit.maximum)
+            next = edit.maximum;
+
+        currentValue = next;
+    }
+    //==========================================================
+
+    void decreaseValue()
+    {
+        const MenuEditConfig &edit =
+            items[currentIndex].edit;
+
+        if (!edit.editable)
+            return;
+
+        int16_t next =
+            currentValue - edit.step;
+
+        if (next < edit.minimum)
+            next = edit.minimum;
+
+        currentValue = next;
+    }
 
     //==========================================================
     // MenuRenderer
@@ -87,7 +122,6 @@ namespace
     class MenuRenderer
     {
     public:
-
         void reset();
 
         void startNext();
@@ -100,8 +134,12 @@ namespace
             Canvas &canvas,
             const char *text);
 
-    private:
+        void drawEditing(
+            Canvas &canvas,
+            const char *text,
+            int16_t value);
 
+    private:
         void drawTextClipped(
             Canvas &canvas,
             const char *text,
@@ -118,7 +156,6 @@ namespace
             const char *text);
 
     private:
-
         bool m_animating = false;
 
         bool m_directionNext = true;
@@ -401,7 +438,180 @@ namespace
             x,
             0);
     }
+    //----------------------------------------------------------
 
+   void MenuRenderer::drawEditing(
+    Canvas &canvas,
+    const char *label,
+    int16_t value)
+{
+    if (label == nullptr)
+        return;
+
+    //------------------------------------------------------
+    // Converte o valor para texto
+    //------------------------------------------------------
+
+    char valueText[8];
+
+    snprintf(
+        valueText,
+        sizeof(valueText),
+        "%d",
+        value);
+
+    //------------------------------------------------------
+    // Dimensões da fonte 5x3
+    //------------------------------------------------------
+
+    const uint8_t charWidth =
+        Font::smallWidth();
+
+    const uint8_t spacing =
+        Font::smallSpacing();
+
+    //------------------------------------------------------
+    // Calcula largura do label
+    //------------------------------------------------------
+
+    uint8_t labelLength = 0;
+
+    while (label[labelLength] != '\0')
+        labelLength++;
+
+    uint8_t valueLength = 0;
+
+    while (valueText[valueLength] != '\0')
+        valueLength++;
+
+    //------------------------------------------------------
+    // Largura total
+    //------------------------------------------------------
+
+    const uint8_t labelWidth =
+        (labelLength * charWidth) +
+        ((labelLength > 0)
+            ? ((labelLength - 1) * spacing)
+            : 0);
+
+    const uint8_t valueWidth =
+        (valueLength * charWidth) +
+        ((valueLength > 0)
+            ? ((valueLength - 1) * spacing)
+            : 0);
+
+    //------------------------------------------------------
+    // Espaço entre nome e valor
+    //------------------------------------------------------
+
+    constexpr uint8_t valueGap = 2;
+
+    const uint8_t totalWidth =
+        labelWidth +
+        valueGap +
+        valueWidth;
+
+    //------------------------------------------------------
+    // Centraliza o conjunto inteiro
+    //------------------------------------------------------
+
+    int16_t x =
+        (canvas.width() - totalWidth) / 2;
+
+    //------------------------------------------------------
+    // Centralização vertical da fonte 5x3
+    //------------------------------------------------------
+
+    const uint8_t y =
+        (canvas.height() -
+         Font::smallHeight()) / 2;
+
+    //------------------------------------------------------
+    // Desenha LABEL
+    //------------------------------------------------------
+
+    const uint8_t *glyph;
+
+    for (uint8_t i = 0;
+         i < labelLength;
+         i++)
+    {
+        glyph =
+            Font::smallGlyph(label[i]);
+
+        if (glyph != nullptr)
+        {
+            for (uint8_t col = 0;
+                 col < charWidth;
+                 col++)
+            {
+                uint8_t data =
+                    pgm_read_byte(
+                        glyph + col);
+
+                for (uint8_t row = 0;
+                     row < Font::smallHeight();
+                     row++)
+                {
+                    if (data & (1 << row))
+                    {
+                        canvas.setPixel(
+                            x + col,
+                            y + row,
+                            true);
+                    }
+                }
+            }
+        }
+
+        x += charWidth + spacing;
+    }
+
+    //------------------------------------------------------
+    // Espaço entre LABEL e VALOR
+    //------------------------------------------------------
+
+    x += valueGap;
+
+    //------------------------------------------------------
+    // Desenha VALUE
+    //------------------------------------------------------
+
+    for (uint8_t i = 0;
+         i < valueLength;
+         i++)
+    {
+        glyph =
+            Font::smallGlyph(valueText[i]);
+
+        if (glyph != nullptr)
+        {
+            for (uint8_t col = 0;
+                 col < charWidth;
+                 col++)
+            {
+                uint8_t data =
+                    pgm_read_byte(
+                        glyph + col);
+
+                for (uint8_t row = 0;
+                     row < Font::smallHeight();
+                     row++)
+                {
+                    if (data & (1 << row))
+                    {
+                        canvas.setPixel(
+                            x + col,
+                            y + row,
+                            true);
+                    }
+                }
+            }
+        }
+
+        x += charWidth + spacing;
+    }
+}
     //==========================================================
     // Navegação
     //==========================================================
@@ -532,17 +742,43 @@ namespace
         if (event.button ==
             ButtonId::Ok)
         {
-            if (event.type ==
+            if (event.type !=
                 ButtonEventType::Click)
             {
-                if (itemCount == 0)
-                    return;
+                return;
+            }
+
+            if (itemCount == 0)
+                return;
+
+            //------------------------------------------------------
+            // Item editável
+            //------------------------------------------------------
+
+            if (items[currentIndex].edit.editable)
+            {
+                currentValue =
+                    items[currentIndex].edit.minimum;
+
+                currentState =
+                    MenuState::Editing;
 
                 createResult(
                     MenuResultType::Selected,
                     items[currentIndex].id,
                     currentValue);
+
+                return;
             }
+
+            //------------------------------------------------------
+            // Item somente seleção
+            //------------------------------------------------------
+
+            createResult(
+                MenuResultType::Selected,
+                items[currentIndex].id,
+                currentValue);
         }
     }
 
@@ -565,7 +801,7 @@ namespace
                 event.type ==
                     ButtonEventType::Repeat)
             {
-                currentValue++;
+                increaseValue();
 
                 createResult(
                     MenuResultType::Changed,
@@ -588,7 +824,7 @@ namespace
                 event.type ==
                     ButtonEventType::Repeat)
             {
-                currentValue--;
+                decreaseValue();
 
                 createResult(
                     MenuResultType::Changed,
@@ -678,10 +914,11 @@ namespace Menu
     //======================================================
     // Adiciona item
     //======================================================
-
+    // ver nova
     bool addItem(
         MenuItemId id,
-        const char *name)
+        const char *name,
+        const MenuEditConfig &edit)
     {
         if (itemCount >= MaxItems)
             return false;
@@ -693,11 +930,29 @@ namespace Menu
 
         items[itemCount].name = name;
 
+        items[itemCount].edit = edit;
+
         itemCount++;
 
         return true;
     }
+    // ver antiga
+    bool addItem(
+        MenuItemId id,
+        const char *name)
+    {
+        MenuEditConfig edit =
+            {
+                false,
+                0,
+                0,
+                1};
 
+        return addItem(
+            id,
+            name,
+            edit);
+    }
     //======================================================
     // Atualização
     //======================================================
@@ -763,6 +1018,25 @@ namespace Menu
             return;
 
         canvas.clear();
+
+        //--------------------------------------------------
+        // Edição
+        //--------------------------------------------------
+
+        if (currentState ==
+            MenuState::Editing)
+        {
+            renderer.drawEditing(
+                canvas,
+                items[currentIndex].name,
+                currentValue);
+
+            return;
+        }
+
+        //--------------------------------------------------
+        // Navegação
+        //--------------------------------------------------
 
         renderer.draw(
             canvas,
