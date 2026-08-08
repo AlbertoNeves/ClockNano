@@ -4,6 +4,7 @@
 #include <Display.h>
 #include <ClockView.h>
 #include <RTC.h>
+#include <Menu.h>
 
 //----------------------------------------------------------
 // Objetos globais
@@ -41,6 +42,36 @@ static void setupHardware()
     canvas.clear();
 
     Buttons::begin();
+
+    Menu::begin();
+
+    Menu::addItem(
+        MenuItemId::Time,
+        "HORA");
+
+    Menu::addItem(
+        MenuItemId::Date,
+        "DATA");
+
+    Menu::addItem(
+        MenuItemId::Font,
+        "FONTE");
+
+    Menu::addItem(
+        MenuItemId::Alarm,
+        "ALARME");
+
+    Menu::addItem(
+        MenuItemId::Brightness,
+        "BRILHO");
+
+    Menu::addItem(
+        MenuItemId::Contrast,
+        "CONTRASTE");
+
+    Menu::addItem(
+        MenuItemId::About,
+        "SOBRE");
 }
 
 //----------------------------------------------------------
@@ -71,71 +102,6 @@ static void updateClock()
 
     display.refresh(canvas);
 }
-//==========================================================
-//           testButtons()
-//==========================================================
-void testButtons()
-{
-    ButtonEvent event;
-
-    if (Buttons::read(event))
-    {
-        Serial.print("Button: ");
-
-        switch (event.button)
-        {
-        case ButtonId::Minus:
-
-            Serial.print("Minus");
-            break;
-
-        case ButtonId::Ok:
-
-            Serial.print("OK");
-            break;
-
-        case ButtonId::Plus:
-
-            Serial.print("Plus");
-            break;
-
-        default:
-
-            Serial.print("None");
-            break;
-        }
-
-        Serial.print("  Event: ");
-
-        switch (event.type)
-        {
-        case ButtonEventType::Click:
-
-            Serial.println("Click");
-            break;
-
-        case ButtonEventType::LongPress:
-
-            Serial.println("LongPress");
-            break;
-
-        case ButtonEventType::Repeat:
-
-            Serial.println("Repeat");
-            break;
-
-        case ButtonEventType::Release:
-
-            Serial.println("Release");
-            break;
-
-        default:
-
-            Serial.println("None");
-            break;
-        }
-    }
-}
 
 //----------------------------------------------------------
 // loop()
@@ -143,7 +109,56 @@ void testButtons()
 
 void loop()
 {
-    updateClock();
+    //------------------------------------------------------
+    // Botões
+    //------------------------------------------------------
+
     Buttons::update();
-      testButtons();
+
+
+    //------------------------------------------------------
+    // Consumir evento
+    //------------------------------------------------------
+
+    ButtonEvent event;
+
+    if (Buttons::read(event))
+    {
+        Menu::update(event);
+    }
+
+
+    //------------------------------------------------------
+    // Menu
+    //------------------------------------------------------
+
+    if (Menu::state() != MenuState::Closed)
+    {
+        static uint32_t lastMenuFrame = 0;
+
+        uint32_t now = millis();
+
+
+        //--------------------------------------------------
+        // Atualização do frame
+        //--------------------------------------------------
+
+        if ((now - lastMenuFrame) >= 25)
+        {
+            lastMenuFrame = now;
+
+            Menu::draw(canvas);
+
+            display.refresh(canvas);
+        }
+
+        return;
+    }
+
+
+    //------------------------------------------------------
+    // Relógio
+    //------------------------------------------------------
+
+    updateClock();
 }

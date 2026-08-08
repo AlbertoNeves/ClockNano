@@ -1,7 +1,6 @@
 #include "Menu.h"
 
 #include <Arduino.h>
-
 #include <Graphics.h>
 #include <Font.h>
 
@@ -88,6 +87,7 @@ namespace
     class MenuRenderer
     {
     public:
+
         void reset();
 
         void startNext();
@@ -101,6 +101,7 @@ namespace
             const char *text);
 
     private:
+
         void drawTextClipped(
             Canvas &canvas,
             const char *text,
@@ -117,6 +118,7 @@ namespace
             const char *text);
 
     private:
+
         bool m_animating = false;
 
         bool m_directionNext = true;
@@ -171,6 +173,7 @@ namespace
     }
 
     //----------------------------------------------------------
+
     int16_t MenuRenderer::centeredX(
         const char *text)
     {
@@ -185,7 +188,9 @@ namespace
 
         return (32 - width) / 2;
     }
+
     //----------------------------------------------------------
+
     void MenuRenderer::startNext()
     {
         m_directionNext = true;
@@ -196,7 +201,9 @@ namespace
 
         m_lastStep = millis();
     }
+
     //----------------------------------------------------------
+
     void MenuRenderer::startPrevious()
     {
         m_directionNext = false;
@@ -207,7 +214,9 @@ namespace
 
         m_lastStep = millis();
     }
+
     //----------------------------------------------------------
+
     void MenuRenderer::update()
     {
         if (!m_animating)
@@ -254,7 +263,9 @@ namespace
             m_animating = false;
         }
     }
+
     //----------------------------------------------------------
+
     void MenuRenderer::drawCharClipped(
         Canvas &canvas,
         char c,
@@ -390,6 +401,7 @@ namespace
             x,
             0);
     }
+
     //==========================================================
     // Navegação
     //==========================================================
@@ -456,50 +468,17 @@ namespace
         const ButtonEvent &event)
     {
         //------------------------------------------------------
-        // LongPress
+        // LongPress do OK
+        //
+        // 1000 ms = abrir Menu
         //------------------------------------------------------
 
         if (event.type ==
             ButtonEventType::LongPress)
         {
-            okLongPressActive = true;
-
-            okRepeatCount = 0;
+            openMenu();
 
             return;
-        }
-
-        //------------------------------------------------------
-        // Repeat
-        //------------------------------------------------------
-
-        if (event.type ==
-            ButtonEventType::Repeat)
-        {
-            if (!okLongPressActive)
-                return;
-
-            okRepeatCount++;
-
-            if (okRepeatCount >=
-                OpenRepeatCount)
-            {
-                openMenu();
-            }
-
-            return;
-        }
-
-        //------------------------------------------------------
-        // Release
-        //------------------------------------------------------
-
-        if (event.type ==
-            ButtonEventType::Release)
-        {
-            okLongPressActive = false;
-
-            okRepeatCount = 0;
         }
     }
 
@@ -641,8 +620,6 @@ namespace
         }
     }
 
-    //==========================================================
-
 } // namespace
 
 //==========================================================
@@ -678,7 +655,6 @@ namespace Menu
         return true;
     }
 
-
     //======================================================
     // Limpa itens
     //======================================================
@@ -699,21 +675,19 @@ namespace Menu
         renderer.reset();
     }
 
-
     //======================================================
     // Adiciona item
     //======================================================
 
     bool addItem(
         MenuItemId id,
-        const char* name)
+        const char *name)
     {
         if (itemCount >= MaxItems)
             return false;
 
         if (name == nullptr)
             return false;
-
 
         items[itemCount].id = id;
 
@@ -724,13 +698,12 @@ namespace Menu
         return true;
     }
 
-
     //======================================================
     // Atualização
     //======================================================
 
     void update(
-        const ButtonEvent& event)
+        const ButtonEvent &event)
     {
         //--------------------------------------------------
         // Menu fechado
@@ -748,7 +721,6 @@ namespace Menu
             return;
         }
 
-
         //--------------------------------------------------
         // Menu navegando
         //--------------------------------------------------
@@ -760,7 +732,6 @@ namespace Menu
 
             return;
         }
-
 
         //--------------------------------------------------
         // Menu em edição
@@ -775,13 +746,12 @@ namespace Menu
         }
     }
 
-
     //======================================================
     // Renderização
     //======================================================
 
     void draw(
-        Canvas& canvas)
+        Canvas &canvas)
     {
         if (currentState ==
             MenuState::Closed)
@@ -789,26 +759,22 @@ namespace Menu
             return;
         }
 
-
         if (itemCount == 0)
             return;
 
-
         canvas.clear();
-
 
         renderer.draw(
             canvas,
             items[currentIndex].name);
     }
 
-
     //======================================================
     // Resultado
     //======================================================
 
     bool readResult(
-        MenuResult& result)
+        MenuResult &result)
     {
         if (pendingResult.type ==
             MenuResultType::None)
@@ -816,16 +782,13 @@ namespace Menu
             return false;
         }
 
-
         result =
             pendingResult;
-
 
         clearResult();
 
         return true;
     }
-
 
     //======================================================
     // Estado
@@ -836,7 +799,6 @@ namespace Menu
         return currentState;
     }
 
-
     //======================================================
     // Item selecionado
     //======================================================
@@ -846,10 +808,8 @@ namespace Menu
         if (itemCount == 0)
             return MenuItemId::None;
 
-
         return items[currentIndex].id;
     }
-
 
     //======================================================
     // Inicia edição
@@ -861,14 +821,11 @@ namespace Menu
         if (itemCount == 0)
             return;
 
-
         currentValue = value;
-
 
         currentState =
             MenuState::Editing;
     }
-
 
     //======================================================
     // Define valor
@@ -880,7 +837,6 @@ namespace Menu
         currentValue = value;
     }
 
-
     //======================================================
     // Retorna valor
     //======================================================
@@ -890,7 +846,6 @@ namespace Menu
         return currentValue;
     }
 
-
     //======================================================
     // Fecha Menu
     //======================================================
@@ -899,7 +854,6 @@ namespace Menu
     {
         currentState =
             MenuState::Closed;
-
 
         okLongPressActive = false;
 

@@ -13,7 +13,7 @@ namespace
     namespace Settings
     {
         constexpr uint16_t DebounceTime = 30;
-        constexpr uint16_t LongPressTime = 700;
+        constexpr uint16_t LongPressTime = 1000;
         constexpr uint16_t RepeatDelay = 250;
         constexpr uint16_t RepeatPeriod = 120;
 
