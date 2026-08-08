@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Graphics.h>
 #include <Font.h>
+#include <Alarm.h>
 
 #include <avr/pgmspace.h>
 
@@ -43,6 +44,11 @@ namespace
     uint8_t itemCount = 0;
 
     uint8_t currentIndex = 0;
+    //==========================================================
+    // Controle da tela de Alarme
+    //==========================================================
+
+    bool alarmActive = false;
 
     //==========================================================
     // Valor de edição
@@ -637,19 +643,19 @@ namespace
         renderer.startNext();
     }
     //----------------------------------------------------------
-void previousItem()
-{
-    if (itemCount == 0)
-        return;
+    void previousItem()
+    {
+        if (itemCount == 0)
+            return;
 
-    if (currentIndex == 0)
-        currentIndex =
-            itemCount - 1;
-    else
-        currentIndex--;
+        if (currentIndex == 0)
+            currentIndex =
+                itemCount - 1;
+        else
+            currentIndex--;
 
-    renderer.startPrevious();
-}
+        renderer.startPrevious();
+    }
 
     //==========================================================
     // Abrir Menu
@@ -756,6 +762,24 @@ void previousItem()
 
             if (itemCount == 0)
                 return;
+            //------------------------------------------------------
+            // Item ALARME
+            //------------------------------------------------------
+
+            if (items[currentIndex].id ==
+                MenuItemId::Alarm)
+            {
+                Alarm::start();
+
+                alarmActive = true;
+
+                createResult(
+                    MenuResultType::Selected,
+                    MenuItemId::Alarm,
+                    0);
+
+                return;
+            }
 
             //------------------------------------------------------
             // Item editável
@@ -894,6 +918,10 @@ namespace Menu
 
         renderer.reset();
 
+        Alarm::begin();
+
+        alarmActive = false;
+
         return true;
     }
 
@@ -915,6 +943,10 @@ namespace Menu
         clearResult();
 
         renderer.reset();
+
+        Alarm::begin();
+
+        alarmActive = false;
     }
 
     //======================================================
@@ -969,7 +1001,32 @@ namespace Menu
         //--------------------------------------------------
         // Menu fechado
         //--------------------------------------------------
+        //--------------------------------------------------
+        // Alarme ativo
+        //--------------------------------------------------
 
+        if (alarmActive)
+        {
+            Alarm::update(event);
+
+            if (Alarm::state() ==
+                Alarm::State::Inactive)
+            {
+                alarmActive = false;
+
+                currentState =
+                    MenuState::Browsing;
+
+                createResult(
+                    MenuResultType::Confirmed,
+                    MenuItemId::Alarm,
+                    (Alarm::hour() * 100) +
+                        Alarm::minute());
+            }
+
+            return;
+        }
+        //--------------------------------------------------
         if (currentState ==
             MenuState::Closed)
         {
@@ -1024,7 +1081,15 @@ namespace Menu
             return;
 
         canvas.clear();
+        //--------------------------------------------------
+        // Alarme
+        //--------------------------------------------------
 
+        if (alarmActive)
+        {
+            Alarm::draw(canvas);
+            return;
+        }
         //--------------------------------------------------
         // Edição
         //--------------------------------------------------
