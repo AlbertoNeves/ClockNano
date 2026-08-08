@@ -42,12 +42,10 @@ static void setupHardware()
 
         ConfigEEPROM::loadBrightness();
 
-
     Serial.print("BRILHO LIDO DA EEPROM: ");
     Serial.println(brightness);
 
     display.setBrightness(brightness);
-    
 
     RTC::begin();
 
@@ -141,24 +139,11 @@ void loop()
     {
         if (Buttons::read(event))
         {
-            Serial.print("EVENT -> ");
-            Serial.println(millis());
 
             Menu::update(event);
-
-            Serial.print("MENU UPDATE -> ");
-            Serial.println(millis());
         }
         //----------------------------------
         Menu::update(event);
-        Serial.print("EVENTO: ");
-        Serial.print(static_cast<uint8_t>(event.type));
-
-        Serial.print("  BUTTON: ");
-        Serial.print(static_cast<uint8_t>(event.button));
-
-        Serial.print("  TIME: ");
-        Serial.println(event.timestamp);
     }
 
     //------------------------------------------------------
@@ -170,34 +155,35 @@ void loop()
     if (Menu::readResult(result))
     {
         //------------------------------------------------------
-        // Debug
-        //------------------------------------------------------
-
-        Serial.print("MenuResult: ");
-
-        Serial.print(
-            static_cast<uint8_t>(result.type));
-
-        Serial.print("  Item: ");
-
-        Serial.print(
-            static_cast<uint8_t>(result.item));
-
-        Serial.print("  Valor: ");
-
-        Serial.println(result.value);
-
-        //------------------------------------------------------
         // Hardware - BRILHO
         //------------------------------------------------------
 
         if (result.item == MenuItemId::Brightness)
         {
-            if (result.type == MenuResultType::Changed ||
-                result.type == MenuResultType::Confirmed)
+            uint8_t brightness =
+                static_cast<uint8_t>(result.value);
+
+            //------------------------------------------------------
+            // Alteração temporária
+            //------------------------------------------------------
+
+            if (result.type == MenuResultType::Changed)
             {
-                display.setBrightness(
-                    static_cast<uint8_t>(result.value));
+                display.setBrightness(brightness);
+            }
+
+            //------------------------------------------------------
+            // Confirmação
+            //------------------------------------------------------
+
+            else if (result.type == MenuResultType::Confirmed)
+            {
+                ConfigEEPROM::saveBrightness(brightness);
+
+                display.setBrightness(brightness);
+
+                Serial.print("BRILHO SALVO: ");
+                Serial.println(brightness);
             }
         }
     }
@@ -222,9 +208,6 @@ void loop()
             Menu::draw(canvas);
 
             display.refresh(canvas);
-
-            Serial.print("DISPLAY REFRESH -> ");
-            Serial.println(millis());
         }
 
         return;

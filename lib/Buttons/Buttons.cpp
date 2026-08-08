@@ -142,9 +142,7 @@ namespace
 
             if (edge == Edge::Release)
             {
-                Serial.print("RELEASE -> CLICK  ");
-                Serial.println(ctx.now - m_pressTime);
-                
+              
                 createEvent(
                     event,
                     ButtonEventType::Click,
