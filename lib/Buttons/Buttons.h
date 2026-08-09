@@ -19,7 +19,8 @@ enum class ButtonId : uint8_t
 
     Minus,
     Ok,
-    Plus
+    Plus,
+    Home
 };
 
 //----------------------------------------------------------

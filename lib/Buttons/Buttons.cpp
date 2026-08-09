@@ -12,7 +12,7 @@ namespace
 
     namespace Settings
     {
-        constexpr uint16_t DebounceTime = 15;
+        constexpr uint16_t DebounceTime = 20;
         constexpr uint16_t LongPressTime = 1000;
         constexpr uint16_t RepeatDelay = 250;
         constexpr uint16_t RepeatPeriod = 120;
@@ -142,7 +142,7 @@ namespace
 
             if (edge == Edge::Release)
             {
-              
+
                 createEvent(
                     event,
                     ButtonEventType::Click,
@@ -319,7 +319,7 @@ namespace
 
     EventQueue g_queue;
 
-    Button g_buttons[3];
+    Button g_buttons[4];
     //==========================================================
 
     void EventQueue::clear()
@@ -538,9 +538,12 @@ namespace Buttons
             Config::BtnPlus,
             ButtonId::Plus);
 
+        g_buttons[3].begin(
+            Config::BtnHome,
+            ButtonId::Home);
+
         return true;
     }
-
     //==========================================================
 
     void update()

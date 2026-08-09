@@ -3,6 +3,7 @@
 #include <Font.h>
 #include <avr/pgmspace.h>
 
+
 namespace
 {
     //======================================================
@@ -11,6 +12,33 @@ namespace
 
     uint8_t alarmHour = 0;
     uint8_t alarmMinute = 0;
+
+    Alarm::Repeat alarmRepeat =
+        Alarm::Repeat::Once;
+
+    // Máscara dos dias da semana
+    //
+    // bit 0 = SEG
+    // bit 1 = TER
+    // bit 2 = QUA
+    // bit 3 = QUI
+    // bit 4 = SEX
+    // bit 5 = SAB
+    // bit 6 = DOM
+
+    uint8_t alarmWeekDays = 0;
+
+    // Dia atualmente sob o cursor
+    //
+    // 0 = SEG
+    // 1 = TER
+    // 2 = QUA
+    // 3 = QUI
+    // 4 = SEX
+    // 5 = SAB
+    // 6 = DOM
+
+    uint8_t alarmDayCursor = 0;
 
     //======================================================
     // Estado
@@ -95,16 +123,54 @@ namespace
     }
 
     //======================================================
-    // Desenha um caractere da fonte 5x3
+    // Incrementa repetição
+    //======================================================
+
+    void increaseRepeat()
+    {
+        uint8_t value =
+            static_cast<uint8_t>(
+                alarmRepeat);
+
+        value++;
+
+        if (value > 2)
+            value = 0;
+
+        alarmRepeat =
+            static_cast<Alarm::Repeat>(value);
+    }
+
+    //======================================================
+    // Decrementa repetição
+    //======================================================
+
+    void decreaseRepeat()
+    {
+        uint8_t value =
+            static_cast<uint8_t>(
+                alarmRepeat);
+
+        if (value == 0)
+            value = 2;
+        else
+            value--;
+
+        alarmRepeat =
+            static_cast<Alarm::Repeat>(value);
+    }
+
+    //======================================================
+    // Desenha caractere da fonte pequena
     //======================================================
 
     void drawSmallChar(
-        Canvas& canvas,
+        Canvas &canvas,
         char c,
         int16_t x,
         uint8_t y)
     {
-        const uint8_t* glyph =
+        const uint8_t *glyph =
             Font::smallGlyph(c);
 
         if (glyph == nullptr)
@@ -151,11 +217,54 @@ namespace
     }
 
     //======================================================
+    // Desenha texto usando fonte pequena
+    //======================================================
+
+    void drawSmallText(
+        Canvas &canvas,
+        const char *text,
+        uint8_t y)
+    {
+        const uint8_t width =
+            Font::smallWidth();
+
+        const uint8_t spacing =
+            Font::smallSpacing();
+
+        const uint8_t step =
+            width + spacing;
+
+        uint8_t length = 0;
+
+        while (text[length] != '\0')
+            length++;
+
+        const uint8_t totalWidth =
+            (length * step) - spacing;
+
+        int16_t x =
+            (canvas.width() - totalWidth) / 2;
+
+        for (uint8_t i = 0;
+             i < length;
+             i++)
+        {
+            drawSmallChar(
+                canvas,
+                text[i],
+                x,
+                y);
+
+            x += step;
+        }
+    }
+
+    //======================================================
     // Desenha dois dígitos
     //======================================================
 
     void drawTwoDigits(
-        Canvas& canvas,
+        Canvas &canvas,
         uint8_t value,
         int16_t x,
         uint8_t y)
@@ -184,16 +293,19 @@ namespace
     }
 
     //======================================================
-    // Desenha dois pontos do separador HH:MM
+    // Desenha dois pontos HH:MM
     //======================================================
 
     void drawColon(
-        Canvas& canvas,
+        Canvas &canvas,
         int16_t x,
         uint8_t y)
     {
-        if (x < 0 || x >= canvas.width())
+        if (x < 0 ||
+            x >= canvas.width())
+        {
             return;
+        }
 
         if (y < canvas.height())
         {
@@ -214,16 +326,10 @@ namespace
 
     //======================================================
     // Desenha indicador do campo selecionado
-    //
-    // Hora:
-    //     ----
-    //
-    // Minuto:
-    //          ----
     //======================================================
 
     void drawSelection(
-        Canvas& canvas)
+        Canvas &canvas)
     {
         const uint8_t charWidth =
             Font::smallWidth();
@@ -234,18 +340,18 @@ namespace
         const uint8_t step =
             charWidth + spacing;
 
-        // Largura:
-        //
-        // HH : MM
-        //
         const uint8_t totalWidth =
             (step * 4) + 2;
 
         const int16_t startX =
-            (canvas.width() - totalWidth) / 2;
+            (canvas.width() -
+             totalWidth) /
+            2;
 
         const uint8_t y =
-            (canvas.height() - Font::smallHeight()) / 2;
+            (canvas.height() -
+             Font::smallHeight()) /
+            2;
 
         const uint8_t lineY =
             y + Font::smallHeight();
@@ -264,18 +370,262 @@ namespace
                 2;
         }
 
-        // Pequena linha de seleção
         for (uint8_t i = 0;
              i < (step * 2) - 1;
              i++)
         {
-            if ((x + i) < canvas.width())
+            if ((x + i) >= 0 &&
+                (x + i) < canvas.width())
             {
                 canvas.setPixel(
                     x + i,
                     lineY,
                     true);
             }
+        }
+    }
+
+    //======================================================
+    // Desenha tela HH:MM
+    //======================================================
+
+    void drawTime(
+        Canvas &canvas)
+    {
+        const uint8_t charWidth =
+            Font::smallWidth();
+
+        const uint8_t spacing =
+            Font::smallSpacing();
+
+        const uint8_t step =
+            charWidth + spacing;
+
+        const uint8_t totalWidth =
+            (step * 4) + 2;
+
+        const int16_t startX =
+            (canvas.width() -
+             totalWidth) /
+            2;
+
+        const uint8_t y =
+            (canvas.height() -
+             Font::smallHeight()) /
+            2;
+
+        // Hora
+
+        drawTwoDigits(
+            canvas,
+            alarmHour,
+            startX,
+            y);
+
+        // :
+
+        const int16_t colonX =
+            startX +
+            (step * 2);
+
+        drawColon(
+            canvas,
+            colonX,
+            y + 1);
+
+        // Minuto
+
+        const int16_t minuteX =
+            colonX + 2;
+
+        drawTwoDigits(
+            canvas,
+            alarmMinute,
+            minuteX,
+            y);
+
+        // Indicador
+
+        drawSelection(canvas);
+    }
+    //======================================================
+    //======================================================
+    // Alterna seleção do dia atual
+    //======================================================
+
+    void toggleWeekDay()
+    {
+        alarmWeekDays ^= (1 << alarmDayCursor);
+    }
+
+    //======================================================
+    // Próximo dia
+    //======================================================
+
+    void nextWeekDay()
+    {
+        alarmDayCursor++;
+
+        if (alarmDayCursor > 6)
+            alarmDayCursor = 0;
+    }
+
+    //======================================================
+    // Dia anterior
+    //======================================================
+
+    void previousWeekDay()
+    {
+        if (alarmDayCursor == 0)
+            alarmDayCursor = 6;
+        else
+            alarmDayCursor--;
+    }
+
+    //======================================================
+    // Desenha tela PERSONAL
+    //
+    //        S T Q Q S S D
+    //        ─
+    //======================================================
+
+    void drawWeekDays(
+        Canvas &canvas)
+    {
+        static const char days[] =
+            {
+                'S', 'T', 'Q', 'Q', 'S', 'S', 'D'};
+
+        const uint8_t charWidth =
+            Font::smallWidth();
+
+        const uint8_t spacing =
+            Font::smallSpacing();
+
+        const uint8_t step =
+            charWidth + spacing;
+
+        const uint8_t totalWidth =
+            (step * 7) - spacing;
+
+        const int16_t startX =
+            (canvas.width() - totalWidth) / 2;
+
+        const uint8_t y =
+            (canvas.height() -
+             Font::smallHeight()) /
+            2;
+
+        //--------------------------------------------------
+        // Letras
+        //--------------------------------------------------
+
+        for (uint8_t i = 0; i < 7; i++)
+        {
+            const int16_t x =
+                startX + (i * step);
+
+            drawSmallChar(
+                canvas,
+                days[i],
+                x,
+                y);
+        }
+
+        //--------------------------------------------------
+        // Cursor
+        //--------------------------------------------------
+
+        const int16_t cursorX =
+            startX +
+            (alarmDayCursor * step);
+
+        const uint8_t cursorY =
+            y + Font::smallHeight();
+
+        for (uint8_t i = 0;
+             i < charWidth;
+             i++)
+        {
+            if ((cursorX + i) >= 0 &&
+                (cursorX + i) < canvas.width() &&
+                cursorY < canvas.height())
+            {
+                canvas.setPixel(
+                    cursorX + i,
+                    cursorY,
+                    true);
+            }
+        }
+
+        //--------------------------------------------------
+        // Dias selecionados
+        //--------------------------------------------------
+
+        const uint8_t selectedY =
+            cursorY + 1;
+
+        for (uint8_t day = 0;
+             day < 7;
+             day++)
+        {
+            if (alarmWeekDays &
+                (1 << day))
+            {
+                const int16_t x =
+                    startX +
+                    (day * step) +
+                    1;
+
+                if (selectedY < canvas.height())
+                {
+                    canvas.setPixel(
+                        x,
+                        selectedY,
+                        true);
+                }
+            }
+        }
+    }
+    //======================================================
+    // Desenha tela de repetição
+    //======================================================
+    void drawRepeat(
+        Canvas &canvas)
+    {
+        const uint8_t y =
+            (canvas.height() -
+             Font::smallHeight()) /
+            2;
+
+        switch (alarmRepeat)
+        {
+        case Alarm::Repeat::Once:
+
+            drawSmallText(
+                canvas,
+                "UNICO",
+                y);
+
+            break;
+
+        case Alarm::Repeat::Daily:
+
+            drawSmallText(
+                canvas,
+                "DIARIO",
+                y);
+
+            break;
+
+        case Alarm::Repeat::WeekDays:
+
+            drawSmallText(
+                canvas,
+                "PERSONAL",
+                y);
+
+            break;
         }
     }
 }
@@ -295,6 +645,11 @@ namespace Alarm
         alarmHour = 0;
         alarmMinute = 0;
 
+        alarmRepeat =
+            Repeat::Once;
+
+        alarmWeekDays = 0;
+
         currentState =
             State::Inactive;
 
@@ -310,6 +665,12 @@ namespace Alarm
         alarmHour = 0;
         alarmMinute = 0;
 
+        alarmRepeat =
+            Repeat::Once;
+
+        alarmWeekDays = 0;
+        alarmDayCursor = 0;
+
         currentState =
             State::EditingHour;
 
@@ -321,7 +682,7 @@ namespace Alarm
     //======================================================
 
     void update(
-        const ButtonEvent& event)
+        const ButtonEvent &event)
     {
         if (currentState ==
             State::Inactive)
@@ -336,10 +697,6 @@ namespace Alarm
         if (currentState ==
             State::EditingHour)
         {
-            //------------------------------------------------
-            // +
-            //------------------------------------------------
-
             if (event.button ==
                 ButtonId::Plus)
             {
@@ -356,10 +713,6 @@ namespace Alarm
 
                 return;
             }
-
-            //------------------------------------------------
-            // -
-            //------------------------------------------------
 
             if (event.button ==
                 ButtonId::Minus)
@@ -378,10 +731,6 @@ namespace Alarm
                 return;
             }
 
-            //------------------------------------------------
-            // OK
-            //------------------------------------------------
-
             if (event.button ==
                 ButtonId::Ok)
             {
@@ -392,7 +741,7 @@ namespace Alarm
                         State::EditingMinute;
 
                     createResult(
-                        Result::HourConfirmed);
+                        Result::FieldConfirmed);
                 }
 
                 return;
@@ -406,6 +755,137 @@ namespace Alarm
         if (currentState ==
             State::EditingMinute)
         {
+            if (event.button ==
+                ButtonId::Plus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    increaseMinute();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            if (event.button ==
+                ButtonId::Minus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    decreaseMinute();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            if (event.button ==
+                ButtonId::Ok)
+            {
+                if (event.type ==
+                    ButtonEventType::Click)
+                {
+                    currentState =
+                        State::EditingRepeat;
+
+                    createResult(
+                        Result::FieldConfirmed);
+                }
+
+                return;
+            }
+        }
+
+        //==================================================
+        // REPETIÇÃO
+        //==================================================
+
+        if (currentState ==
+            State::EditingRepeat)
+        {
+            if (event.button ==
+                ButtonId::Plus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    increaseRepeat();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            if (event.button ==
+                ButtonId::Minus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    decreaseRepeat();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            if (event.button ==
+                ButtonId::Ok)
+            {
+                if (event.type ==
+                    ButtonEventType::Click)
+                {
+                    if (alarmRepeat ==
+                        Repeat::WeekDays)
+                    {
+                        currentState =
+                            State::EditingWeekDays;
+
+                        createResult(
+                            Result::FieldConfirmed);
+                    }
+                    else
+                    {
+                        currentState =
+                            State::Inactive;
+
+                        createResult(
+                            Result::Confirmed);
+                    }
+                }
+
+                return;
+            }
+        }
+
+        //==================================================
+        // DIAS DA SEMANA - PERSONAL
+        //
+        // + / - : movimenta o cursor
+        // OK    : seleciona / deseleciona o dia
+        //==================================================
+
+        if (currentState ==
+            State::EditingWeekDays)
+        {
             //------------------------------------------------
             // +
             //------------------------------------------------
@@ -418,7 +898,7 @@ namespace Alarm
                     event.type ==
                         ButtonEventType::Repeat)
                 {
-                    increaseMinute();
+                    nextWeekDay();
 
                     createResult(
                         Result::Changed);
@@ -439,7 +919,7 @@ namespace Alarm
                     event.type ==
                         ButtonEventType::Repeat)
                 {
-                    decreaseMinute();
+                    previousWeekDay();
 
                     createResult(
                         Result::Changed);
@@ -458,11 +938,10 @@ namespace Alarm
                 if (event.type ==
                     ButtonEventType::Click)
                 {
-                    currentState =
-                        State::Inactive;
+                    toggleWeekDay();
 
                     createResult(
-                        Result::Confirmed);
+                        Result::Changed);
                 }
 
                 return;
@@ -475,7 +954,7 @@ namespace Alarm
     //======================================================
 
     void draw(
-        Canvas& canvas)
+        Canvas &canvas)
     {
         if (currentState ==
             State::Inactive)
@@ -485,70 +964,28 @@ namespace Alarm
 
         canvas.clear();
 
-        const uint8_t charWidth =
-            Font::smallWidth();
+        if (currentState ==
+                State::EditingHour ||
+            currentState ==
+                State::EditingMinute)
+        {
+            drawTime(canvas);
+            return;
+        }
 
-        const uint8_t spacing =
-            Font::smallSpacing();
+        if (currentState ==
+            State::EditingRepeat)
+        {
+            drawRepeat(canvas);
+            return;
+        }
 
-        const uint8_t step =
-            charWidth + spacing;
-
-        //--------------------------------------------------
-        // HH : MM
-        //--------------------------------------------------
-
-        const uint8_t totalWidth =
-            (step * 4) + 2;
-
-        const int16_t startX =
-            (canvas.width() - totalWidth) / 2;
-
-        const uint8_t y =
-            (canvas.height() -
-             Font::smallHeight()) / 2;
-
-        //--------------------------------------------------
-        // HORA
-        //--------------------------------------------------
-
-        drawTwoDigits(
-            canvas,
-            alarmHour,
-            startX,
-            y);
-
-        //--------------------------------------------------
-        // :
-        //--------------------------------------------------
-
-        const int16_t colonX =
-            startX +
-            (step * 2);
-
-        drawColon(
-            canvas,
-            colonX,
-            y + 1);
-
-        //--------------------------------------------------
-        // MINUTO
-        //--------------------------------------------------
-
-        const int16_t minuteX =
-            colonX + 2;
-
-        drawTwoDigits(
-            canvas,
-            alarmMinute,
-            minuteX,
-            y);
-
-        //--------------------------------------------------
-        // Indicador do campo
-        //--------------------------------------------------
-
-        drawSelection(canvas);
+        if (currentState ==
+            State::EditingWeekDays)
+        {
+            drawWeekDays(canvas);
+            return;
+        }
     }
 
     //======================================================
@@ -565,7 +1002,7 @@ namespace Alarm
     //======================================================
 
     bool readResult(
-        Result& result)
+        Result &result)
     {
         if (pendingResult ==
             Result::None)
@@ -597,6 +1034,24 @@ namespace Alarm
     uint8_t minute()
     {
         return alarmMinute;
+    }
+
+    //======================================================
+    // Repetição
+    //======================================================
+
+    Repeat repeat()
+    {
+        return alarmRepeat;
+    }
+
+    //======================================================
+    // Dias da semana
+    //======================================================
+
+    uint8_t weekDays()
+    {
+        return alarmWeekDays;
     }
 
     //======================================================
