@@ -3,7 +3,6 @@
 #include <Font.h>
 #include <avr/pgmspace.h>
 
-
 namespace
 {
     //======================================================
@@ -886,6 +885,7 @@ namespace Alarm
         if (currentState ==
             State::EditingWeekDays)
         {
+            
             //------------------------------------------------
             // +
             //------------------------------------------------
@@ -942,6 +942,26 @@ namespace Alarm
 
                     createResult(
                         Result::Changed);
+                }
+
+                return;
+            }
+            //------------------------------------------------
+            // HOME
+            // Confirma PERSONAL
+            //------------------------------------------------
+
+            if (event.button ==
+                ButtonId::Home)
+            {
+                if (event.type ==
+                    ButtonEventType::Click)
+                {
+                    currentState =
+                        State::Inactive;
+
+                    createResult(
+                        Result::Confirmed);
                 }
 
                 return;

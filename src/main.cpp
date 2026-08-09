@@ -137,9 +137,7 @@ void loop()
 
     if (Buttons::read(event))
     {
-        Serial.print("BUTTON: ");
-        Serial.println(
-            static_cast<uint8_t>(event.button));
+
         Menu::update(event);
     }
 
