@@ -6,14 +6,39 @@
 namespace
 {
     //======================================================
-    // Valores da edição
+    // Dados dos 3 alarmes
     //======================================================
 
-    uint8_t alarmHour = 0;
-    uint8_t alarmMinute = 0;
+    Alarm::AlarmData alarms[Alarm::MAX_ALARMS] =
+        {
+            {
+                0,                   // hour
+                0,                   // minute
+                Alarm::Repeat::Once, // repeat
+                0,                   // weekDays
+                0,                   // melody
+                false                // enabled
+            },
 
-    Alarm::Repeat alarmRepeat =
-        Alarm::Repeat::Once;
+            {0,
+             0,
+             Alarm::Repeat::Once,
+             0,
+             0,
+             false},
+
+            {0,
+             0,
+             Alarm::Repeat::Once,
+             0,
+             0,
+             false}};
+
+    //======================================================
+    // Alarme atualmente em edição
+    //======================================================
+
+    uint8_t editingAlarmIndex = 0;
 
     // Máscara dos dias da semana
     //
@@ -25,19 +50,12 @@ namespace
     // bit 5 = SAB
     // bit 6 = DOM
 
-    uint8_t alarmWeekDays = 0;
-
-    // Dia atualmente sob o cursor
-    //
-    // 0 = SEG
-    // 1 = TER
-    // 2 = QUA
-    // 3 = QUI
-    // 4 = SEX
-    // 5 = SAB
-    // 6 = DOM
-
     uint8_t alarmDayCursor = 0;
+    //======================================================
+    // Evento de disparo do alarme'
+    //======================================================
+
+    bool alarmTriggered = false;
 
     //======================================================
     // Estado
@@ -72,29 +90,62 @@ namespace
     {
         pendingResult = result;
     }
-
     //======================================================
-    // Incrementa hora
+    // Próximo alarme
     //======================================================
 
-    void increaseHour()
+    void nextAlarm()
     {
-        alarmHour++;
+        editingAlarmIndex++;
 
-        if (alarmHour > 23)
-            alarmHour = 0;
+        if (editingAlarmIndex >=
+            Alarm::MAX_ALARMS)
+        {
+            editingAlarmIndex = 0;
+        }
     }
 
     //======================================================
-    // Decrementa hora
+    // Alarme anterior
     //======================================================
 
+    void previousAlarm()
+    {
+        if (editingAlarmIndex == 0)
+        {
+            editingAlarmIndex =
+                Alarm::MAX_ALARMS - 1;
+        }
+        else
+        {
+            editingAlarmIndex--;
+        }
+    }
+    //======================================================
+    // Incrementa hora
+    //======================================================
+    void increaseHour()
+    {
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
+
+        alarm.hour++;
+
+        if (alarm.hour > 23)
+            alarm.hour = 0;
+    }
+    //======================================================
+    // Decrementa hora
+    //======================================================
     void decreaseHour()
     {
-        if (alarmHour == 0)
-            alarmHour = 23;
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
+
+        if (alarm.hour == 0)
+            alarm.hour = 23;
         else
-            alarmHour--;
+            alarm.hour--;
     }
 
     //======================================================
@@ -103,59 +154,68 @@ namespace
 
     void increaseMinute()
     {
-        alarmMinute++;
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
 
-        if (alarmMinute > 59)
-            alarmMinute = 0;
+        alarm.minute++;
+
+        if (alarm.minute > 59)
+            alarm.minute = 0;
     }
-
     //======================================================
     // Decrementa minuto
     //======================================================
 
     void decreaseMinute()
     {
-        if (alarmMinute == 0)
-            alarmMinute = 59;
-        else
-            alarmMinute--;
-    }
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
 
+        if (alarm.minute == 0)
+            alarm.minute = 59;
+        else
+            alarm.minute--;
+    }
     //======================================================
     // Incrementa repetição
     //======================================================
 
     void increaseRepeat()
     {
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
+
         uint8_t value =
             static_cast<uint8_t>(
-                alarmRepeat);
+                alarm.repeat);
 
         value++;
 
         if (value > 2)
             value = 0;
 
-        alarmRepeat =
+        alarm.repeat =
             static_cast<Alarm::Repeat>(value);
     }
-
     //======================================================
     // Decrementa repetição
     //======================================================
 
     void decreaseRepeat()
     {
+        Alarm::AlarmData &alarm =
+            alarms[editingAlarmIndex];
+
         uint8_t value =
             static_cast<uint8_t>(
-                alarmRepeat);
+                alarm.repeat);
 
         if (value == 0)
             value = 2;
         else
             value--;
 
-        alarmRepeat =
+        alarm.repeat =
             static_cast<Alarm::Repeat>(value);
     }
 
@@ -417,7 +477,7 @@ namespace
 
         drawTwoDigits(
             canvas,
-            alarmHour,
+            alarms[editingAlarmIndex].hour,
             startX,
             y);
 
@@ -439,7 +499,7 @@ namespace
 
         drawTwoDigits(
             canvas,
-            alarmMinute,
+            alarms[editingAlarmIndex].minute,
             minuteX,
             y);
 
@@ -454,7 +514,8 @@ namespace
 
     void toggleWeekDay()
     {
-        alarmWeekDays ^= (1 << alarmDayCursor);
+        alarms[editingAlarmIndex].weekDays ^=
+            (1 << alarmDayCursor);
     }
 
     //======================================================
@@ -568,7 +629,7 @@ namespace
              day < 7;
              day++)
         {
-            if (alarmWeekDays &
+            if (alarms[editingAlarmIndex].weekDays &
                 (1 << day))
             {
                 const int16_t x =
@@ -597,7 +658,8 @@ namespace
              Font::smallHeight()) /
             2;
 
-        switch (alarmRepeat)
+        switch (
+            alarms[editingAlarmIndex].repeat)
         {
         case Alarm::Repeat::Once:
 
@@ -638,16 +700,28 @@ namespace Alarm
     //======================================================
     // Inicialização
     //======================================================
-
     void begin()
     {
-        alarmHour = 0;
-        alarmMinute = 0;
+        for (uint8_t i = 0;
+             i < MAX_ALARMS;
+             i++)
+        {
+            alarms[i].hour = 0;
+            alarms[i].minute = 0;
 
-        alarmRepeat =
-            Repeat::Once;
+            alarms[i].repeat =
+                Repeat::Once;
 
-        alarmWeekDays = 0;
+            alarms[i].weekDays = 0;
+
+            alarms[i].melody = 0;
+
+            alarms[i].enabled = false;
+        }
+
+        editingAlarmIndex = 0;
+
+        alarmDayCursor = 0;
 
         currentState =
             State::Inactive;
@@ -658,20 +732,23 @@ namespace Alarm
     //======================================================
     // Inicia edição
     //======================================================
-
     void start()
     {
-        alarmHour = 0;
-        alarmMinute = 0;
+        start(0);
+    }
 
-        alarmRepeat =
-            Repeat::Once;
+    void start(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return;
 
-        alarmWeekDays = 0;
+        editingAlarmIndex = index;
+
         alarmDayCursor = 0;
 
         currentState =
-            State::EditingHour;
+            State::SelectingAlarm;
 
         clearResult();
     }
@@ -688,7 +765,99 @@ namespace Alarm
         {
             return;
         }
+        //======================================================
+        // SELEÇÃO DO ALARME
+        //
+        // + / - : seleciona ALRM 1 / 2 / 3
+        // OK    : confirma
+        // HOME  : sai
+        //======================================================
 
+        if (currentState ==
+            State::SelectingAlarm)
+        {
+            //--------------------------------------------------
+            // +
+            //--------------------------------------------------
+
+            if (event.button ==
+                ButtonId::Plus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    nextAlarm();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            //--------------------------------------------------
+            // -
+            //--------------------------------------------------
+
+            if (event.button ==
+                ButtonId::Minus)
+            {
+                if (event.type ==
+                        ButtonEventType::Click ||
+                    event.type ==
+                        ButtonEventType::Repeat)
+                {
+                    previousAlarm();
+
+                    createResult(
+                        Result::Changed);
+                }
+
+                return;
+            }
+
+            //--------------------------------------------------
+            // OK
+            //--------------------------------------------------
+
+            if (event.button ==
+                ButtonId::Ok)
+            {
+                if (event.type ==
+                    ButtonEventType::Click)
+                {
+                    currentState =
+                        State::EditingRepeat;
+
+                    createResult(
+                        Result::FieldConfirmed);
+                }
+
+                return;
+            }
+
+            //--------------------------------------------------
+            // HOME
+            //--------------------------------------------------
+
+            if (event.button ==
+                ButtonId::Home)
+            {
+                if (event.type ==
+                    ButtonEventType::Click)
+                {
+                    currentState =
+                        State::Inactive;
+
+                    createResult(
+                        Result::Confirmed);
+                }
+
+                return;
+            }
+        }
         //==================================================
         // HORA
         //==================================================
@@ -794,8 +963,25 @@ namespace Alarm
                 if (event.type ==
                     ButtonEventType::Click)
                 {
-                    currentState =
-                        State::EditingRepeat;
+                    if (alarms[editingAlarmIndex].repeat ==
+                        Repeat::WeekDays)
+                    {
+                        currentState =
+                            State::EditingWeekDays;
+                    }
+                    else
+                    {
+                        alarms[editingAlarmIndex].enabled =
+                            true;
+
+                        currentState =
+                            State::Inactive;
+
+                        createResult(
+                            Result::Confirmed);
+
+                        return;
+                    }
 
                     createResult(
                         Result::FieldConfirmed);
@@ -812,6 +998,9 @@ namespace Alarm
         if (currentState ==
             State::EditingRepeat)
         {
+            //--------------------------------------------------
+            // +
+            //--------------------------------------------------
             if (event.button ==
                 ButtonId::Plus)
             {
@@ -828,7 +1017,9 @@ namespace Alarm
 
                 return;
             }
-
+            //--------------------------------------------------
+            // -
+            //--------------------------------------------------
             if (event.button ==
                 ButtonId::Minus)
             {
@@ -845,6 +1036,9 @@ namespace Alarm
 
                 return;
             }
+            //--------------------------------------------------
+            // OK
+            //--------------------------------------------------
 
             if (event.button ==
                 ButtonId::Ok)
@@ -852,23 +1046,11 @@ namespace Alarm
                 if (event.type ==
                     ButtonEventType::Click)
                 {
-                    if (alarmRepeat ==
-                        Repeat::WeekDays)
-                    {
-                        currentState =
-                            State::EditingWeekDays;
+                    currentState =
+                        State::EditingHour;
 
-                        createResult(
-                            Result::FieldConfirmed);
-                    }
-                    else
-                    {
-                        currentState =
-                            State::Inactive;
-
-                        createResult(
-                            Result::Confirmed);
-                    }
+                    createResult(
+                        Result::FieldConfirmed);
                 }
 
                 return;
@@ -885,7 +1067,7 @@ namespace Alarm
         if (currentState ==
             State::EditingWeekDays)
         {
-            
+
             //------------------------------------------------
             // +
             //------------------------------------------------
@@ -968,7 +1150,33 @@ namespace Alarm
             }
         }
     }
+    //======================================================
+    // Desenha seleção do alarme
+    //======================================================
 
+    void drawAlarmSelection(
+        Canvas &canvas)
+    {
+        char text[8];
+
+        text[0] = 'A';
+        text[1] = 'L';
+        text[2] = 'R';
+        text[3] = 'M';
+        text[4] = ' ';
+
+        text[5] =
+            '1' + editingAlarmIndex;
+
+        text[6] = '\0';
+
+        drawSmallText(
+            canvas,
+            text,
+            (canvas.height() -
+             Font::smallHeight()) /
+                2);
+    }
     //======================================================
     // Renderização
     //======================================================
@@ -984,6 +1192,12 @@ namespace Alarm
 
         canvas.clear();
 
+        if (currentState ==
+            State::SelectingAlarm)
+        {
+            drawAlarmSelection(canvas);
+            return;
+        }
         if (currentState ==
                 State::EditingHour ||
             currentState ==
@@ -1042,38 +1256,156 @@ namespace Alarm
     // Hora
     //======================================================
 
-    uint8_t hour()
+    //======================================================
+    // Alarme atualmente em edição
+    //======================================================
+
+    uint8_t currentAlarm()
     {
-        return alarmHour;
+        return editingAlarmIndex;
     }
 
     //======================================================
-    // Minuto
+    // Hora - alarme atual
+    //======================================================
+
+    uint8_t hour()
+    {
+        return alarms[editingAlarmIndex].hour;
+    }
+
+    //======================================================
+    // Minuto - alarme atual
     //======================================================
 
     uint8_t minute()
     {
-        return alarmMinute;
+        return alarms[editingAlarmIndex].minute;
     }
 
     //======================================================
-    // Repetição
+    // Repetição - alarme atual
     //======================================================
 
     Repeat repeat()
     {
-        return alarmRepeat;
+        return alarms[editingAlarmIndex].repeat;
     }
 
     //======================================================
-    // Dias da semana
+    // Dias - alarme atual
     //======================================================
 
     uint8_t weekDays()
     {
-        return alarmWeekDays;
+        return alarms[editingAlarmIndex].weekDays;
     }
 
+    //======================================================
+    // Hora - alarme específico
+    //======================================================
+
+    uint8_t hour(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return 0;
+
+        return alarms[index].hour;
+    }
+
+    //======================================================
+    // Minuto - alarme específico
+    //======================================================
+
+    uint8_t minute(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return 0;
+
+        return alarms[index].minute;
+    }
+
+    //======================================================
+    // Repetição - alarme específico
+    //======================================================
+
+    Repeat repeat(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return Repeat::Once;
+
+        return alarms[index].repeat;
+    }
+
+    //======================================================
+    // Dias - alarme específico
+    //======================================================
+
+    uint8_t weekDays(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return 0;
+
+        return alarms[index].weekDays;
+    }
+
+    //======================================================
+    // Melodia - alarme específico
+    //======================================================
+
+    uint8_t melody(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return 0;
+
+        return alarms[index].melody;
+    }
+
+    //======================================================
+    // Habilitação - alarme específico
+    //======================================================
+
+    bool enabled(
+        uint8_t index)
+    {
+        if (index >= MAX_ALARMS)
+            return false;
+
+        return alarms[index].enabled;
+    }
+
+    //======================================================
+    // Define habilitação
+    //======================================================
+
+    void setEnabled(
+        uint8_t index,
+        bool value)
+    {
+        if (index >= MAX_ALARMS)
+            return;
+
+        alarms[index].enabled = value;
+    }
+
+    //======================================================
+    // Evento de disparo
+    //======================================================
+
+    bool consumeTrigger()
+    {
+        if (!alarmTriggered)
+            return false;
+
+        alarmTriggered = false;
+
+        return true;
+    }
     //======================================================
     // Cancelar
     //======================================================
