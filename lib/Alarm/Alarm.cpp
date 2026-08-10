@@ -1,4 +1,5 @@
 #include "Alarm.h"
+#include <RTC.h>
 
 #include <Font.h>
 #include <avr/pgmspace.h>
@@ -55,8 +56,208 @@ namespace
     // Evento de disparo do alarme'
     //======================================================
 
-    bool alarmTriggered = false;
+    //======================================================
+    // Flags de disparo
+    //
+    // bit 0 = ALRM 1
+    // bit 1 = ALRM 2
+    // bit 2 = ALRM 3
+    //======================================================
 
+    uint8_t alarmTriggerMask = 0;
+
+    //======================================================
+    // Evita múltiplos disparos durante o mesmo minuto
+    //======================================================
+
+    uint32_t lastTriggerKey[Alarm::MAX_ALARMS] =
+        {
+            0,
+            0,
+            0};
+
+    //======================================================
+    // Verifica se o alarme pode disparar hoje
+    //======================================================
+
+    bool isDayAllowed(
+        const Alarm::AlarmData &alarm,
+        uint8_t rtcDayOfWeek)
+    {
+        //--------------------------------------------------
+        // ÚNICO
+        //
+        // Não depende do dia da semana.
+        //--------------------------------------------------
+
+        if (alarm.repeat ==
+            Alarm::Repeat::Once)
+        {
+            return true;
+        }
+
+        //--------------------------------------------------
+        // DIÁRIO
+        //--------------------------------------------------
+
+        if (alarm.repeat ==
+            Alarm::Repeat::Daily)
+        {
+            return true;
+        }
+
+        //--------------------------------------------------
+        // PERSONAL
+        //
+        // RTClib:
+        //
+        // 0 = Domingo
+        // 1 = Segunda
+        // 2 = Terça
+        // 3 = Quarta
+        // 4 = Quinta
+        // 5 = Sexta
+        // 6 = Sábado
+        //
+        // Nossa máscara:
+        //
+        // bit 0 = Segunda
+        // bit 1 = Terça
+        // bit 2 = Quarta
+        // bit 3 = Quinta
+        // bit 4 = Sexta
+        // bit 5 = Sábado
+        // bit 6 = Domingo
+        //--------------------------------------------------
+
+        uint8_t maskBit;
+
+        if (rtcDayOfWeek == 0)
+        {
+            // Domingo
+            maskBit = 6;
+        }
+        else
+        {
+            // Segunda = 0
+            // Terça   = 1
+            // ...
+            // Sábado  = 5
+
+            maskBit =
+                rtcDayOfWeek - 1;
+        }
+
+        return (
+            alarm.weekDays &
+            (1 << maskBit));
+    }
+    //======================================================
+    // Cria identificador único para:
+    // ano + mês + dia + hora + minuto
+    //
+    // Serve para impedir que o mesmo alarme seja
+    // disparado várias vezes durante o mesmo minuto.
+    //======================================================
+
+    uint32_t makeTriggerKey(
+        const RtcDateTime &dt)
+    {
+        uint32_t dayKey =
+            ((uint32_t)dt.year * 512UL) +
+            ((uint32_t)dt.month * 32UL) +
+            dt.day;
+
+        return (dayKey * 1440UL) +
+               ((uint32_t)dt.hour * 60UL) +
+               dt.minute;
+    }
+    //======================================================
+    // Verifica todos os alarmes
+    //======================================================
+
+    void checkAlarms()
+    {
+        RtcDateTime now;
+
+        if (!RTC::read(now))
+            return;
+
+        const uint32_t triggerKey =
+            makeTriggerKey(now);
+
+        for (uint8_t i = 0;
+             i < Alarm::MAX_ALARMS;
+             i++)
+        {
+            Alarm::AlarmData &alarm =
+                alarms[i];
+
+            //--------------------------------------------------
+            // Desabilitado
+            //--------------------------------------------------
+
+            if (!alarm.enabled)
+                continue;
+
+            //--------------------------------------------------
+            // Hora diferente
+            //--------------------------------------------------
+
+            if (alarm.hour != now.hour)
+                continue;
+
+            //--------------------------------------------------
+            // Minuto diferente
+            //--------------------------------------------------
+
+            if (alarm.minute != now.minute)
+                continue;
+
+            //--------------------------------------------------
+            // Dia não permitido
+            //--------------------------------------------------
+
+            if (!isDayAllowed(
+                    alarm,
+                    now.dayOfWeek))
+            {
+                continue;
+            }
+
+            //--------------------------------------------------
+            // Já disparou neste minuto
+            //--------------------------------------------------
+
+            if (lastTriggerKey[i] ==
+                triggerKey)
+            {
+                continue;
+            }
+
+            //--------------------------------------------------
+            // REGISTRA DISPARO
+            //--------------------------------------------------
+
+            lastTriggerKey[i] =
+                triggerKey;
+
+            alarmTriggerMask |=
+                (1 << i);
+
+            //--------------------------------------------------
+            // ÚNICO:
+            //
+            // dispara uma vez e fica desabilitado.
+            //--------------------------------------------------
+
+            if (alarm.repeat ==
+                Alarm::Repeat::Once)
+            {
+                alarm.enabled = false;
+            }
+        }
+    }
     //======================================================
     // Estado
     //======================================================
@@ -717,7 +918,11 @@ namespace Alarm
             alarms[i].melody = 0;
 
             alarms[i].enabled = false;
+
+            lastTriggerKey[i] = 0;
         }
+
+        alarmTriggerMask = 0;
 
         editingAlarmIndex = 0;
 
@@ -1139,6 +1344,13 @@ namespace Alarm
                 if (event.type ==
                     ButtonEventType::Click)
                 {
+                    //--------------------------------------------------
+                    // Confirma PERSONAL
+                    //--------------------------------------------------
+
+                    alarms[editingAlarmIndex].enabled =
+                        true;
+
                     currentState =
                         State::Inactive;
 
@@ -1394,17 +1606,32 @@ namespace Alarm
     }
 
     //======================================================
-    // Evento de disparo
+    // Consome um disparo e informa qual alarme disparou
     //======================================================
 
-    bool consumeTrigger()
+    bool consumeTrigger(
+        uint8_t &index)
     {
-        if (!alarmTriggered)
+        if (alarmTriggerMask == 0)
             return false;
 
-        alarmTriggered = false;
+        for (uint8_t i = 0;
+             i < Alarm::MAX_ALARMS;
+             i++)
+        {
+            if (alarmTriggerMask &
+                (1 << i))
+            {
+                alarmTriggerMask &=
+                    ~(1 << i);
 
-        return true;
+                index = i;
+
+                return true;
+            }
+        }
+
+        return false;
     }
     //======================================================
     // Cancelar
@@ -1416,5 +1643,15 @@ namespace Alarm
             State::Inactive;
 
         clearResult();
+    }
+    //======================================================
+    // Serviço dos alarmes
+    //
+    // Deve ser chamado continuamente pelo main.cpp
+    //======================================================
+
+    void service()
+    {
+        checkAlarms();
     }
 }

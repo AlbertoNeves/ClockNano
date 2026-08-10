@@ -6,6 +6,7 @@
 #include <RTC.h>
 #include <Menu.h>
 #include <ConfigEEPROM.h>
+#include <Alarm.h>
 
 //----------------------------------------------------------
 // Objetos globais
@@ -140,6 +141,8 @@ void loop()
 
         Menu::update(event);
     }
+    // verifica se algum alarme disparou
+    Alarm::service();
 
     //------------------------------------------------------
     // Teste da camada de edição
@@ -213,4 +216,12 @@ void loop()
     //------------------------------------------------------
 
     updateClock();
+
+    uint8_t alarmIndex;
+
+    if (Alarm::consumeTrigger(alarmIndex))
+    {
+        Serial.print("ALARM TRIGGER: ");
+        Serial.println(alarmIndex + 1);
+    }
 }
