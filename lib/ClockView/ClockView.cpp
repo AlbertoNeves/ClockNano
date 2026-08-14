@@ -3,34 +3,58 @@
 #include <Canvas.h>
 #include <Graphics.h>
 #include <Font.h>
+#include <Font_5x7.h>
 #include <Font_Dual.h>
 #include <Font_5x3.h>
+#include <Font_Round.h>
 #include <avr/pgmspace.h>
 
 namespace
 {
     ClockFontStyle currentFont = ClockFontStyle::Normal;
 
-    // Estado da animação vertical dos segundos.
+    //======================================================
+    // Animação dos segundos — V6 "Seconds Odometer"
+    //======================================================
+
     uint8_t lastSecond = 255;
     uint8_t oldSecond = 0;
     uint8_t newSecond = 0;
-    uint8_t scrollOffset = 0;
-    uint32_t lastScrollStep = 0;
+    uint32_t animationStart = 0;
     bool scrolling = false;
 
-    // Layout compacto do modo SEGUNDOS para os 32 pixels do display.
-    // HH:MM = 25 colunas; SS = 7 colunas. Total = 32.
-    constexpr uint8_t HourDigit1X = 0;
-    constexpr uint8_t HourDigit2X = 6;
-    constexpr uint8_t ColonX = 11;
-    constexpr uint8_t MinuteDigit1X = 14;
-    constexpr uint8_t MinuteDigit2X = 20;
+    // Layout FIXO para a tela principal.
+    // Não usamos centralização automática no relógio: cada elemento tem
+    // posição física definida para aproveitar corretamente os 32x8 pixels.
+    //
+    // NORMAL (5x7): cada elemento ocupa 5 colunas e há 1 coluna apagada
+    // entre hora, dois-pontos e minutos. Layout fixo: 1 + 5 + 1 + 5 + 2 + 5 + 2 + 5 + 1 + 5 = 32 colunas.
+    constexpr uint8_t NormalHourDigit1X = 3;
+    constexpr uint8_t NormalHourDigit2X = 9;
+    constexpr uint8_t NormalColonX = 14;
+    constexpr uint8_t NormalMinuteDigit1X = 18;
+    constexpr uint8_t NormalMinuteDigit2X = 24;
+
+    // SEGUNDOS: HH:MM usa a dig5x8rn (5x8). Mantemos 1 px entre os
+    // elementos de HH:MM; o bloco dos segundos começa imediatamente após
+    // o último dígito para caber nos 32 pixels.
+    // 5 + 1 + 5 + 1 + 1 + 1 + 5 + 1 + 5 = 25 pixels.
+    // Os segundos 3x5 ocupam as 7 colunas restantes (25..31).
+    constexpr uint8_t SecondsClockHourDigit1X = 0;
+    constexpr uint8_t SecondsClockHourDigit2X = 6;
+    constexpr uint8_t SecondsClockColonX = 12;
+    constexpr uint8_t SecondsClockMinuteDigit1X = 14;
+    constexpr uint8_t SecondsClockMinuteDigit2X = 20;
     constexpr uint8_t SecondsX = 25;
     constexpr uint8_t SecondsDigitWidth = Font5x3::Width;
     constexpr uint8_t SecondsDigitGap = 1;
-    constexpr uint8_t DigitH = Font5x3::Height;
-    constexpr uint16_t ScrollStepMs = 25;
+
+    // Fonte 3x5: permanece aprovada para os segundos.
+    // Centralizada verticalmente no display 8x8.
+    constexpr int16_t SecondsY = 1;
+
+    // Duração total da transição de um segundo para o próximo.
+    constexpr uint16_t ScrollDurationMs = 200;
 
     void drawGlyph(
         Canvas &canvas,
@@ -63,49 +87,89 @@ namespace
         }
     }
 
+    void drawNormalClock(Canvas &canvas, uint8_t hour, uint8_t minute, bool showColon)
+    {
+        drawGlyph(canvas, NormalHourDigit1X, 0,
+                  Font::glyph('0' + hour / 10), 5, 7);
+
+        drawGlyph(canvas, NormalHourDigit2X, 0,
+                  Font::glyph('0' + hour % 10), 5, 7);
+
+        if (showColon)
+        {
+            drawGlyph(canvas, NormalColonX, 0,
+                      Font5x7::Colon, Font5x7::Width, Font5x7::Height);
+        }
+
+        drawGlyph(canvas, NormalMinuteDigit1X, 0,
+                  Font::glyph('0' + minute / 10), 5, 7);
+
+        drawGlyph(canvas, NormalMinuteDigit2X, 0,
+                  Font::glyph('0' + minute % 10), 5, 7);
+    }
+
+    void drawSecondsClockTime(Canvas &canvas, uint8_t hour, uint8_t minute, bool showColon)
+    {
+        // HH:MM em dig5x8rn, sem centralização automática.
+        drawGlyph(canvas, SecondsClockHourDigit1X, 0,
+                  FontRound::glyph('0' + hour / 10),
+                  FontRound::Width, FontRound::Height);
+
+        drawGlyph(canvas, SecondsClockHourDigit2X, 0,
+                  FontRound::glyph('0' + hour % 10),
+                  FontRound::Width, FontRound::Height);
+
+        if (showColon)
+        {
+            // Dois pontos compactos de 1 coluna, mantendo 1 px livre
+            // antes e depois, como nos demais elementos.
+            static const uint8_t compactColon[1] PROGMEM = {0x66};
+            drawGlyph(canvas, SecondsClockColonX, 0, compactColon, 1, 8);
+        }
+
+        drawGlyph(canvas, SecondsClockMinuteDigit1X, 0,
+                  FontRound::glyph('0' + minute / 10),
+                  FontRound::Width, FontRound::Height);
+
+        drawGlyph(canvas, SecondsClockMinuteDigit2X, 0,
+                  FontRound::glyph('0' + minute % 10),
+                  FontRound::Width, FontRound::Height);
+    }
+
     void drawDualClock(Canvas &canvas, uint8_t hour, uint8_t minute, bool showColon)
     {
-        char txt[6];
-        snprintf(txt, sizeof(txt), "%02u:%02u", hour, minute);
-        if (!showColon)
-            txt[2] = ' ';
+        // dig6x8: 6x8 por dígito.
+        // Layout com 1 coluna livre entre cada elemento:
+        // HHHHHH _ HHHHHH _ :: _ MMMMMM _ MMMMMM
+        // 24 colunas dos 4 dígitos + 2 do ':' + 4 espaços = 30.
+        // Ficam 1 coluna livre em cada extremidade do display 32x8.
+        constexpr uint8_t hour1X = 1;
+        constexpr uint8_t hour2X = 8;
+        constexpr uint8_t colonX = 15;
+        constexpr uint8_t minute1X = 18;
+        constexpr uint8_t minute2X = 25;
 
-        constexpr uint8_t charW = FontDual::Width;
-        constexpr uint8_t spacing = FontDual::Spacing;
-        constexpr uint8_t totalW = 5 * charW + 4 * spacing;
-        const uint8_t x0 = (canvas.width() - totalW) / 2;
+        drawGlyph(canvas, hour1X, 0,
+                  FontDual::glyph('0' + hour / 10),
+                  FontDual::Width, FontDual::Height);
 
-        for (uint8_t i = 0; i < 5; ++i)
-            drawGlyph(canvas, x0 + i * (charW + spacing), 0,
-                      FontDual::glyph(txt[i]), charW, FontDual::Height);
-    }
+        drawGlyph(canvas, hour2X, 0,
+                  FontDual::glyph('0' + hour % 10),
+                  FontDual::Width, FontDual::Height);
 
-    void drawSecondsBlock(
-        Canvas &canvas,
-        uint8_t seconds,
-        int16_t y,
-        bool clipped)
-    {
-        (void)clipped;
-        char tens = '0' + (seconds / 10);
-        char units = '0' + (seconds % 10);
+        if (showColon)
+        {
+            drawGlyph(canvas, colonX, 0,
+                      FontDual::Colon, 2, FontDual::Height);
+        }
 
-        // Dois dígitos 5x3 lado a lado: TT UU.
-        drawGlyph(canvas, SecondsX, y,
-                  Font5x3::glyph(tens),
-                  Font5x3::Width, Font5x3::Height);
-        drawGlyph(canvas, SecondsX + SecondsDigitWidth + SecondsDigitGap, y,
-                  Font5x3::glyph(units),
-                  Font5x3::Width, Font5x3::Height);
-    }
+        drawGlyph(canvas, minute1X, 0,
+                  FontDual::glyph('0' + minute / 10),
+                  FontDual::Width, FontDual::Height);
 
-    void resetScroll(uint8_t second)
-    {
-        oldSecond = (second == 0) ? 59 : second - 1;
-        newSecond = second;
-        scrollOffset = 0;
-        scrolling = true;
-        lastScrollStep = millis();
+        drawGlyph(canvas, minute2X, 0,
+                  FontDual::glyph('0' + minute % 10),
+                  FontDual::Width, FontDual::Height);
     }
 
     void updateScroll(uint8_t second)
@@ -123,50 +187,123 @@ namespace
         {
             oldSecond = lastSecond;
             newSecond = second;
-            scrollOffset = 0;
+            animationStart = millis();
             scrolling = true;
-            lastScrollStep = millis();
             lastSecond = second;
         }
 
         if (!scrolling)
             return;
 
-        const uint32_t now = millis();
-        if ((now - lastScrollStep) < ScrollStepMs)
-            return;
-
-        lastScrollStep = now;
-        ++scrollOffset;
-
-        if (scrollOffset >= 8)
+        const uint32_t elapsed = millis() - animationStart;
+        if (elapsed >= ScrollDurationMs)
         {
-            scrollOffset = 0;
             scrolling = false;
         }
+    }
+
+    // Curva smoothstep: começa devagar, acelera no meio e desacelera
+    // suavemente antes de terminar. O resultado é mais natural que uma
+    // rolagem linear.
+    uint8_t easedDisplacement()
+    {
+        const uint32_t elapsed = millis() - animationStart;
+
+        if (elapsed >= ScrollDurationMs)
+            return Font5x3::Height + 1;
+
+        const uint32_t t = (elapsed * 255UL) / ScrollDurationMs;
+
+        // smoothstep aproximado em aritmética inteira:
+        // f(t) = t²(3 - 2t), com t normalizado em 0..255.
+        const uint32_t t2 = t * t;
+        const uint32_t smooth =
+            (t2 * (765UL - 2UL * t)) / (255UL * 255UL);
+
+        return static_cast<uint8_t>(
+            (smooth * (Font5x3::Height + 1) + 127UL) / 255UL);
+    }
+
+    void drawAnimatedDigit(
+        Canvas &canvas,
+        uint8_t oldDigit,
+        uint8_t newDigit,
+        uint8_t x,
+        uint8_t displacement)
+    {
+        // Se o dígito não mudou, permanece completamente parado.
+        if (oldDigit == newDigit || !scrolling)
+        {
+            drawGlyph(canvas, x, SecondsY,
+                      Font5x3::glyph('0' + newDigit),
+                      Font5x3::Width, Font5x3::Height);
+            return;
+        }
+
+        // O dígito antigo sobe e desaparece pelo topo.
+        const int16_t oldY = SecondsY - displacement;
+
+        // O novo dígito entra por baixo e termina exatamente na posição
+        // normal do indicador de segundos.
+        const int16_t newY = SecondsY + Font5x3::Height + 1 - displacement;
+
+        drawGlyph(canvas, x, oldY,
+                  Font5x3::glyph('0' + oldDigit),
+                  Font5x3::Width, Font5x3::Height);
+
+        drawGlyph(canvas, x, newY,
+                  Font5x3::glyph('0' + newDigit),
+                  Font5x3::Width, Font5x3::Height);
     }
 
     void drawScrollingSeconds(Canvas &canvas, uint8_t second)
     {
         updateScroll(second);
 
-        // Os dois dígitos 5x3 ocupam 7 colunas e são centralizados
-        // verticalmente na área 8x8.
+        const uint8_t oldTens = oldSecond / 10;
+        const uint8_t oldUnits = oldSecond % 10;
+        const uint8_t newTens = newSecond / 10;
+        const uint8_t newUnits = newSecond % 10;
+
         if (!scrolling)
         {
-            drawSecondsBlock(canvas, newSecond, 2, false);
+            drawGlyph(canvas, SecondsX, SecondsY,
+                      Font5x3::glyph('0' + newTens),
+                      Font5x3::Width, Font5x3::Height);
+
+            drawGlyph(canvas,
+                      SecondsX + SecondsDigitWidth + SecondsDigitGap,
+                      SecondsY,
+                      Font5x3::glyph('0' + newUnits),
+                      Font5x3::Width, Font5x3::Height);
             return;
         }
 
-        // Rolagem vertical: o valor antigo sai por cima e o novo entra
-        // por baixo. O grupo SS tem 5 pixels de altura.
-        const int16_t oldY = -static_cast<int16_t>(scrollOffset);
-        const int16_t newY = 8 - static_cast<int16_t>(scrollOffset);
+        const uint8_t displacement = easedDisplacement();
 
-        drawSecondsBlock(canvas, oldSecond, oldY, true);
-        drawSecondsBlock(canvas, newSecond, newY, true);
+        // Comportamento de odômetro:
+        // 37 -> 38 : somente a unidade rola.
+        // 39 -> 40 : dezena e unidade rolam juntas.
+        // 59 -> 00 : os dois dígitos rolam simultaneamente.
+        drawAnimatedDigit(
+            canvas,
+            oldTens,
+            newTens,
+            SecondsX,
+            displacement);
+
+        drawAnimatedDigit(
+            canvas,
+            oldUnits,
+            newUnits,
+            SecondsX + SecondsDigitWidth + SecondsDigitGap,
+            displacement);
+
+        // A separação entre o dígito que sai e o que entra é uma
+        // linha de pixels APAGADOS. Como o Canvas é limpo a cada quadro,
+        // basta manter uma distância de 1 pixel entre os dois glyphs.
+        // Não desenhamos nenhum pixel nessa linha.
     }
-
 }
 
 namespace ClockView
@@ -197,42 +334,11 @@ namespace ClockView
         uint8_t second,
         bool showColon)
     {
-        // A fonte SEGUNDOS mantém o horário em Font5x7 e usa as 7 colunas
-        // reservadas para o indicador SS em fonte 5x3.
+        // A fonte SEGUNDOS usa dig5x8rn para HH:MM e mantém as 7 colunas
+        // reservadas para o indicador SS em fonte 3x5.
         if (currentFont == ClockFontStyle::Seconds)
         {
-            // Layout compacto específico para 32x8.
-            //
-            // HH = 5 + 1 + 5
-            // :  = 3 colunas, sem espaçamento externo
-            // MM = 5 + 1 + 5
-            // SS = 3 + 1 + 3
-            //
-            // Total = 25 + 7 = 32 pixels.
-            const uint8_t h10 = hour / 10;
-            const uint8_t h01 = hour % 10;
-            const uint8_t m10 = minute / 10;
-            const uint8_t m01 = minute % 10;
-
-            drawGlyph(canvas, HourDigit1X, 0,
-                      Font::glyph('0' + h10), 5, 7);
-            drawGlyph(canvas, HourDigit2X, 0,
-                      Font::glyph('0' + h01), 5, 7);
-
-            // ':' compacto: uma única coluna de largura, dentro de uma
-            // área lógica de 3 colunas. Isso elimina o espaçamento externo
-            // e mantém os dois pontos visualmente separados dos dígitos.
-            if (showColon)
-            {
-                static const uint8_t compactColon[1] PROGMEM = {0x36};
-                drawGlyph(canvas, ColonX + 1, 0, compactColon, 1, 7);
-            }
-
-            drawGlyph(canvas, MinuteDigit1X, 0,
-                      Font::glyph('0' + m10), 5, 7);
-            drawGlyph(canvas, MinuteDigit2X, 0,
-                      Font::glyph('0' + m01), 5, 7);
-
+            drawSecondsClockTime(canvas, hour, minute, showColon);
             drawScrollingSeconds(canvas, second);
             return;
         }
@@ -243,11 +349,8 @@ namespace ClockView
             return;
         }
 
-        char txt[6];
-        snprintf(txt, sizeof(txt), "%02u:%02u", hour, minute);
-        if (!showColon)
-            txt[2] = ' ';
-
-        Graphics::drawStringCentered(canvas, 0, txt);
+        // O relógio usa posições fixas; a centralização automática fica
+        // reservada para textos e telas que realmente precisam dela.
+        drawNormalClock(canvas, hour, minute, showColon);
     }
 }
