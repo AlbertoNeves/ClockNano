@@ -4,8 +4,10 @@
 #include <Graphics.h>
 #include <Font.h>
 #include <Alarm.h>
+#include <RTCAdjust.h>
 
 #include <avr/pgmspace.h>
+#include <string.h>
 
 namespace
 {
@@ -49,6 +51,12 @@ namespace
     //==========================================================
 
     bool alarmActive = false;
+
+    //==========================================================
+    // Controle da tela de Ajuste RTC
+    //==========================================================
+
+    bool rtcAdjustActive = false;
 
     //==========================================================
     // Valor de edição
@@ -462,6 +470,56 @@ namespace
             return;
 
         //------------------------------------------------------
+        // FONTE: mostra o nome da fonte selecionada.
+        //------------------------------------------------------
+        if (strcmp(label, "FONTE") == 0)
+        {
+            const char *name = "NORMAL";
+
+            if (value == 1)
+                name = "DUPLA";
+            else if (value == 2)
+                name = "SEGUNDOS";
+
+            const uint8_t charW = Font::smallWidth();
+            const uint8_t spacing = Font::smallSpacing();
+            const uint8_t h = Font::smallHeight();
+
+            uint8_t len = 0;
+            while (name[len] != '\0')
+                ++len;
+
+            uint8_t totalW = (len * charW) +
+                             ((len > 0) ? ((len - 1) * spacing) : 0);
+
+            int16_t x = (canvas.width() - totalW) / 2;
+            uint8_t y = (canvas.height() - h) / 2;
+
+            for (uint8_t i = 0; i < len; ++i)
+            {
+                const uint8_t *glyph = Font::smallGlyph(name[i]);
+
+                if (glyph != nullptr)
+                {
+                    for (uint8_t col = 0; col < charW; ++col)
+                    {
+                        uint8_t data = pgm_read_byte(glyph + col);
+
+                        for (uint8_t row = 0; row < h; ++row)
+                        {
+                            if (data & (1 << row))
+                                canvas.setPixel(x + col, y + row, true);
+                        }
+                    }
+                }
+
+                x += charW + spacing;
+            }
+
+            return;
+        }
+
+        //------------------------------------------------------
         // Converte o valor para texto
         //------------------------------------------------------
 
@@ -777,6 +835,40 @@ namespace
 
             if (itemCount == 0)
                 return;
+
+            //------------------------------------------------------
+            // Item HORA / DATA
+            //
+            // Ambos entram no mesmo ajuste completo de
+            // DATA + HORA.
+            //------------------------------------------------------
+
+            if (items[currentIndex].id ==
+                    MenuItemId::Time ||
+                items[currentIndex].id ==
+                    MenuItemId::Date)
+            {
+                if (items[currentIndex].id ==
+                    MenuItemId::Date)
+                {
+                    RTCAdjust::start(
+                        RTCAdjust::Mode::Date);
+                }
+                else
+                {
+                    RTCAdjust::start(
+                        RTCAdjust::Mode::Time);
+                }
+
+                rtcAdjustActive = true;
+
+                createResult(
+                    MenuResultType::Selected,
+                    items[currentIndex].id,
+                    0);
+
+                return;
+            }
             //------------------------------------------------------
             // Item ALARME
             //------------------------------------------------------
@@ -952,6 +1044,10 @@ namespace Menu
 
         alarmActive = false;
 
+        RTCAdjust::begin();
+
+        rtcAdjustActive = false;
+
         return true;
     }
 
@@ -1056,6 +1152,57 @@ namespace Menu
 
             return;
         }
+
+        //--------------------------------------------------
+        // Ajuste RTC ativo
+        //--------------------------------------------------
+
+        if (rtcAdjustActive)
+        {
+            RTCAdjust::update(event);
+
+            RTCAdjust::Result rtcResult;
+
+            if (RTCAdjust::readResult(rtcResult))
+            {
+                //--------------------------------------------------
+                // CANCELADO
+                //--------------------------------------------------
+
+                if (rtcResult ==
+                    RTCAdjust::Result::Cancelled)
+                {
+                    rtcAdjustActive = false;
+
+                    currentState =
+                        MenuState::Browsing;
+
+                    return;
+                }
+
+                //--------------------------------------------------
+                // CONFIRMADO
+                //--------------------------------------------------
+
+                if (rtcResult ==
+                    RTCAdjust::Result::Confirmed)
+                {
+                    rtcAdjustActive = false;
+
+                    currentState =
+                        MenuState::Browsing;
+
+                    createResult(
+                        MenuResultType::Confirmed,
+                        MenuItemId::Time,
+                        0);
+
+                    return;
+                }
+            }
+
+            return;
+        }
         //--------------------------------------------------
         if (currentState ==
             MenuState::Closed)
@@ -1118,6 +1265,16 @@ namespace Menu
         if (alarmActive)
         {
             Alarm::draw(canvas);
+            return;
+        }
+
+        //--------------------------------------------------
+        // Ajuste RTC
+        //--------------------------------------------------
+
+        if (rtcAdjustActive)
+        {
+            RTCAdjust::draw(canvas);
             return;
         }
         //--------------------------------------------------

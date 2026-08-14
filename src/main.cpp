@@ -48,6 +48,8 @@ static void setupHardware()
 
     display.setBrightness(brightness);
 
+    ClockView::setFont(ConfigEEPROM::loadFont());
+
     RTC::begin();
 
     canvas.clear();
@@ -66,7 +68,11 @@ static void setupHardware()
 
     Menu::addItem(
         MenuItemId::Font,
-        "FONTE");
+        "FONTE",
+        {true,
+         0,
+         2,
+         1});
 
     Menu::addItem(
         MenuItemId::Alarm,
@@ -96,16 +102,36 @@ static void setupHardware()
 static void updateClock()
 {
     static uint8_t lastSecond = 255;
+    static uint32_t lastFrame = 0;
 
     RtcDateTime rtcNow;
 
     if (!RTC::read(rtcNow))
         return;
 
-    if (rtcNow.second == lastSecond)
-        return;
+    const bool secondsMode =
+        (ClockView::font() == ClockFontStyle::Seconds);
 
-    lastSecond = rtcNow.second;
+    const uint32_t now = millis();
+
+    // No modo SEGUNDOS precisamos redesenhar durante a rolagem.
+    // Nos demais modos continuamos atualizando apenas quando o segundo muda.
+    if (!secondsMode)
+    {
+        if (rtcNow.second == lastSecond)
+            return;
+
+        lastSecond = rtcNow.second;
+    }
+    else
+    {
+        if (rtcNow.second == lastSecond &&
+            (now - lastFrame) < 25)
+            return;
+
+        lastSecond = rtcNow.second;
+        lastFrame = now;
+    }
 
     canvas.clear();
 
@@ -113,6 +139,7 @@ static void updateClock()
         canvas,
         rtcNow.hour,
         rtcNow.minute,
+        rtcNow.second,
         (rtcNow.second & 1) == 0);
 
     display.refresh(canvas);
@@ -152,6 +179,35 @@ void loop()
 
     if (Menu::readResult(result))
     {
+        //------------------------------------------------------
+        // FONTE
+        //------------------------------------------------------
+
+        if (result.item == MenuItemId::Font)
+        {
+            if (result.type == MenuResultType::Selected)
+            {
+                Menu::setValue(
+                    static_cast<int16_t>(ConfigEEPROM::loadFont()));
+            }
+            else if (result.type == MenuResultType::Changed)
+            {
+                ClockView::setFont(
+                    static_cast<ClockFontStyle>(result.value));
+            }
+            else if (result.type == MenuResultType::Confirmed)
+            {
+                ClockFontStyle style =
+                    static_cast<ClockFontStyle>(result.value);
+
+                ConfigEEPROM::saveFont(style);
+                ClockView::setFont(style);
+
+                Serial.print("FONTE SALVA: ");
+                Serial.println(result.value);
+            }
+        }
+
         //------------------------------------------------------
         // Hardware - BRILHO
         //------------------------------------------------------

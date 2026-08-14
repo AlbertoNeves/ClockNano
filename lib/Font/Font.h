@@ -2,22 +2,24 @@
 
 #include <Arduino.h>
 
+enum class ClockFontStyle : uint8_t
+{
+    Normal = 0,
+    Dual   = 1,
+    Seconds = 2
+};
+
 namespace Font
 {
-    // Dimensões da fonte atual
+    // Fonte principal usada pelo menu e pelo texto normal.
     uint8_t width();
     uint8_t height();
-
-    // Espaçamento entre caracteres
     uint8_t spacing();
-
-    // Retorna ponteiro para o bitmap do caractere
     const uint8_t *glyph(char c);
-    
-// Dimensões da fonte pequena
+
+    // Fonte pequena 3x5 usada nas telas de edição.
     uint8_t smallWidth();
     uint8_t smallHeight();
     uint8_t smallSpacing();
-
     const uint8_t *smallGlyph(char c);
 }
