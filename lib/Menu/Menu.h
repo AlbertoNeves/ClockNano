@@ -19,7 +19,6 @@ enum class MenuItemId : uint8_t
     Font,
     Alarm,
     Brightness,
-    Contrast,
     About
 };
 

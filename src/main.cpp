@@ -87,10 +87,6 @@ static void setupHardware()
          1});
 
     Menu::addItem(
-        MenuItemId::Contrast,
-        "CONTRASTE");
-
-    Menu::addItem(
         MenuItemId::About,
         "SOBRE");
 }
@@ -102,6 +98,7 @@ static void setupHardware()
 static void updateClock()
 {
     static uint8_t lastSecond = 255;
+    static uint8_t lastColonPhase = 255;
     static uint32_t lastFrame = 0;
 
     RtcDateTime rtcNow;
@@ -113,15 +110,18 @@ static void updateClock()
         (ClockView::font() == ClockFontStyle::Seconds);
 
     const uint32_t now = millis();
+    // Cada fase dura 500 ms: o ':' alterna ligado/desligado duas vezes por segundo.
+    const uint8_t colonPhase = (now / 500U) & 1U;
 
     // No modo SEGUNDOS precisamos redesenhar durante a rolagem.
     // Nos demais modos continuamos atualizando apenas quando o segundo muda.
     if (!secondsMode)
     {
-        if (rtcNow.second == lastSecond)
+        if (rtcNow.second == lastSecond && colonPhase == lastColonPhase)
             return;
 
         lastSecond = rtcNow.second;
+        lastColonPhase = colonPhase;
     }
     else
     {
@@ -130,6 +130,7 @@ static void updateClock()
             return;
 
         lastSecond = rtcNow.second;
+        lastColonPhase = colonPhase;
         lastFrame = now;
     }
 
@@ -140,7 +141,7 @@ static void updateClock()
         rtcNow.hour,
         rtcNow.minute,
         rtcNow.second,
-        (rtcNow.second & 1) == 0);
+        colonPhase == 0);
 
     display.refresh(canvas);
 }
@@ -214,6 +215,12 @@ void loop()
 
         if (result.item == MenuItemId::Brightness)
         {
+            if (result.type == MenuResultType::Selected)
+            {
+                Menu::setValue(
+                    static_cast<int16_t>(ConfigEEPROM::loadBrightness()));
+            }
+
             uint8_t brightness =
                 static_cast<uint8_t>(result.value);
 

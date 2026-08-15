@@ -45,6 +45,7 @@ namespace
     constexpr uint8_t SecondsClockColonX = 12;
     constexpr uint8_t SecondsClockMinuteDigit1X = 14;
     constexpr uint8_t SecondsClockMinuteDigit2X = 20;
+    constexpr uint8_t SecondsSeparatorColumn = 24;
     constexpr uint8_t SecondsX = 25;
     constexpr uint8_t SecondsDigitWidth = Font5x3::Width;
     constexpr uint8_t SecondsDigitGap = 1;
@@ -134,6 +135,9 @@ namespace
         drawGlyph(canvas, SecondsClockMinuteDigit2X, 0,
                   FontRound::glyph('0' + minute % 10),
                   FontRound::Width, FontRound::Height);
+
+        // Reserva uma coluna apagada entre MM e os segundos.
+        canvas.clearColumn(SecondsSeparatorColumn);
     }
 
     void drawDualClock(Canvas &canvas, uint8_t hour, uint8_t minute, bool showColon)

@@ -30,6 +30,10 @@ namespace
 
     constexpr uint16_t AnimationInterval = 20;
 
+    constexpr uint16_t ScrollInterval = 50;
+
+    constexpr uint8_t ScrollGap = 8;
+
     //==========================================================
     // Máquina de estados do Menu
     //==========================================================
@@ -51,6 +55,10 @@ namespace
     //==========================================================
 
     bool alarmActive = false;
+
+    bool aboutActive = false;
+
+    uint8_t aboutScrollCount = 0;
 
     //==========================================================
     // Controle da tela de Ajuste RTC
@@ -148,6 +156,13 @@ namespace
             Canvas &canvas,
             const char *text);
 
+        void startScrolling(
+            const char *text);
+
+        bool drawScrolling(
+            Canvas &canvas,
+            const char *text);
+
         void drawEditing(
             Canvas &canvas,
             const char *text,
@@ -178,6 +193,12 @@ namespace
         int16_t m_targetX = 0;
 
         uint32_t m_lastStep = 0;
+
+        const char *m_scrollText = nullptr;
+
+        int16_t m_scrollX = 0;
+
+        uint32_t m_lastScrollStep = 0;
     };
 
     MenuRenderer renderer;
@@ -223,6 +244,12 @@ namespace
         m_targetX = 0;
 
         m_lastStep = millis();
+
+        m_scrollText = nullptr;
+
+        m_scrollX = 0;
+
+        m_lastScrollStep = millis();
     }
 
     //----------------------------------------------------------
@@ -246,6 +273,8 @@ namespace
 
     void MenuRenderer::startNext()
     {
+        m_scrollText = nullptr;
+
         m_directionNext = true;
 
         m_animating = true;
@@ -262,6 +291,8 @@ namespace
 
     void MenuRenderer::startPrevious()
     {
+        m_scrollText = nullptr;
+
         m_directionNext = false;
 
         m_animating = true;
@@ -459,6 +490,53 @@ namespace
             x,
             0);
     }
+    //----------------------------------------------------------
+
+    void MenuRenderer::startScrolling(
+        const char *text)
+    {
+        m_scrollText = text;
+        m_scrollX = Canvas::Width;
+        m_lastScrollStep = millis();
+    }
+
+    //----------------------------------------------------------
+
+    bool MenuRenderer::drawScrolling(
+        Canvas &canvas,
+        const char *text)
+    {
+        if (text == nullptr)
+            return false;
+
+        const uint32_t now = millis();
+
+        if (m_scrollText != text)
+        {
+            m_scrollText = text;
+            m_scrollX = canvas.width();
+            m_lastScrollStep = now;
+        }
+        else if ((now - m_lastScrollStep) >= ScrollInterval)
+        {
+            m_lastScrollStep = now;
+            --m_scrollX;
+        }
+
+        const int16_t textWidth = Graphics::textWidth(text);
+
+        if (m_scrollX < -(textWidth + ScrollGap))
+        {
+            m_scrollX = canvas.width();
+            drawTextClipped(canvas, text, m_scrollX, 0);
+            return true;
+        }
+
+        drawTextClipped(canvas, text, m_scrollX, 0);
+
+        return false;
+    }
+
     //----------------------------------------------------------
 
     void MenuRenderer::drawEditing(
@@ -769,6 +847,9 @@ namespace
     void processBrowsing(
         const ButtonEvent &event)
     {
+        if (aboutActive)
+            return;
+
         //------------------------------------------------------
         // +
         //------------------------------------------------------
@@ -884,6 +965,22 @@ namespace
                     MenuResultType::Selected,
                     MenuItemId::Alarm,
                     0);
+
+                return;
+            }
+
+            //------------------------------------------------------
+            // Item SOBRE
+            //------------------------------------------------------
+
+            if (items[currentIndex].id ==
+                MenuItemId::About)
+            {
+                aboutActive = true;
+                aboutScrollCount = 0;
+
+                renderer.startScrolling(
+                    "ALBERTO NEVES AGOSTO 2026");
 
                 return;
             }
@@ -1044,6 +1141,9 @@ namespace Menu
 
         alarmActive = false;
 
+        aboutActive = false;
+        aboutScrollCount = 0;
+
         RTCAdjust::begin();
 
         rtcAdjustActive = false;
@@ -1073,6 +1173,9 @@ namespace Menu
         Alarm::begin();
 
         alarmActive = false;
+
+        aboutActive = false;
+        aboutScrollCount = 0;
     }
 
     //======================================================
@@ -1296,6 +1399,24 @@ namespace Menu
         // Navegação
         //--------------------------------------------------
 
+        if (aboutActive)
+        {
+            if (renderer.drawScrolling(
+                canvas,
+                "ALBERTO NEVES AGOSTO 2026"))
+            {
+                ++aboutScrollCount;
+
+                if (aboutScrollCount >= 2)
+                {
+                    Menu::close();
+                    return;
+                }
+            }
+
+            return;
+        }
+
         renderer.draw(
             canvas,
             items[currentIndex].name);
@@ -1390,6 +1511,9 @@ namespace Menu
         okLongPressActive = false;
 
         okRepeatCount = 0;
+
+        aboutActive = false;
+        aboutScrollCount = 0;
 
         renderer.reset();
 
