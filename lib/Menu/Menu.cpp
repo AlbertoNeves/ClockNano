@@ -4,6 +4,7 @@
 #include <Graphics.h>
 #include <Font.h>
 #include <Alarm.h>
+#include <Melodias.h>
 #include <RTCAdjust.h>
 
 #include <avr/pgmspace.h>
@@ -19,6 +20,8 @@ namespace
     constexpr uint8_t MaxItems = 8;
 
     constexpr uint16_t MenuOpenTime = 2000;
+
+    constexpr uint32_t MenuInactivityTimeout = 10000;
 
     constexpr uint8_t OpenRepeatCount = 11;
 
@@ -56,6 +59,8 @@ namespace
 
     bool alarmActive = false;
 
+    bool melodiesActive = false;
+
     bool aboutActive = false;
 
     uint8_t aboutScrollCount = 0;
@@ -79,6 +84,12 @@ namespace
     bool okLongPressActive = false;
 
     uint8_t okRepeatCount = 0;
+
+    uint32_t lastMenuInteraction = 0;
+
+    // Indica que uma melodia estava tocando. Quando ela termina,
+    // o contador de inatividade dos 10 s começa novamente.
+    bool melodyWasPlaying = false;
 
     //==========================================================
     // Resultado
@@ -810,6 +821,9 @@ namespace
         okLongPressActive = false;
         okRepeatCount = 0;
 
+        lastMenuInteraction = millis();
+        melodyWasPlaying = false;
+
         renderer.reset();
 
         createResult(
@@ -966,6 +980,16 @@ namespace
                     MenuItemId::Alarm,
                     0);
 
+                return;
+            }
+
+            if (items[currentIndex].id ==
+                MenuItemId::Melodies)
+            {
+                Melodias::start();
+                melodiesActive = true;
+                melodyWasPlaying = false;
+                lastMenuInteraction = millis();
                 return;
             }
 
@@ -1141,6 +1165,9 @@ namespace Menu
 
         alarmActive = false;
 
+        melodiesActive = false;
+        melodyWasPlaying = false;
+
         aboutActive = false;
         aboutScrollCount = 0;
 
@@ -1173,6 +1200,9 @@ namespace Menu
         Alarm::begin();
 
         alarmActive = false;
+
+        melodiesActive = false;
+        melodyWasPlaying = false;
 
         aboutActive = false;
         aboutScrollCount = 0;
@@ -1256,6 +1286,23 @@ namespace Menu
             return;
         }
 
+        if (melodiesActive)
+        {
+            // Qualquer atividade de botão dentro da tela de melodias
+            // reinicia o contador de inatividade.
+            lastMenuInteraction = millis();
+
+            Melodias::update(event);
+
+            if (!Melodias::active())
+            {
+                melodiesActive = false;
+                melodyWasPlaying = false;
+            }
+
+            return;
+        }
+
         //--------------------------------------------------
         // Ajuste RTC ativo
         //--------------------------------------------------
@@ -1319,6 +1366,8 @@ namespace Menu
             return;
         }
 
+        lastMenuInteraction = millis();
+
         //--------------------------------------------------
         // Menu navegando
         //--------------------------------------------------
@@ -1360,6 +1409,41 @@ namespace Menu
         if (itemCount == 0)
             return;
 
+        // A tela de melodias tem uma regra especial de inatividade:
+        // enquanto a melodia estiver tocando, os 10 s ficam suspensos.
+        // Quando a melodia termina, o contador é reiniciado naquele instante.
+        if (melodiesActive)
+        {
+            const bool playingNow = Melodias::isPlaying();
+
+            if (playingNow)
+            {
+                // Enquanto a melodia toca, o timeout fica totalmente suspenso.
+                melodyWasPlaying = true;
+            }
+            else if (melodyWasPlaying)
+            {
+                // A melodia acabou: ESTE instante passa a ser o início
+                // da contagem dos 10 segundos de inatividade.
+                lastMenuInteraction = millis();
+                melodyWasPlaying = false;
+            }
+            else if ((millis() - lastMenuInteraction) >= MenuInactivityTimeout)
+            {
+                // A melodia já terminou e passaram 10 s sem nova atividade.
+                Menu::close();
+                return;
+            }
+        }
+        else if (!alarmActive &&
+                 !rtcAdjustActive &&
+                 !aboutActive &&
+                 (millis() - lastMenuInteraction) >= MenuInactivityTimeout)
+        {
+            Menu::close();
+            return;
+        }
+
         canvas.clear();
         //--------------------------------------------------
         // Alarme
@@ -1368,6 +1452,12 @@ namespace Menu
         if (alarmActive)
         {
             Alarm::draw(canvas);
+            return;
+        }
+
+        if (melodiesActive)
+        {
+            Melodias::draw(canvas);
             return;
         }
 
@@ -1505,6 +1595,13 @@ namespace Menu
 
     void close()
     {
+        if (melodiesActive)
+        {
+            Melodias::cancel();
+            melodiesActive = false;
+            melodyWasPlaying = false;
+        }
+
         currentState =
             MenuState::Closed;
 

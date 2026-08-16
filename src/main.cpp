@@ -7,6 +7,7 @@
 #include <Menu.h>
 #include <ConfigEEPROM.h>
 #include <Alarm.h>
+#include <Melodias.h>
 
 //----------------------------------------------------------
 // Objetos globais
@@ -21,13 +22,21 @@ Canvas canvas;
 static void setupHardware();
 static void updateClock();
 
+namespace
+{
+    constexpr uint32_t AlarmMelodyReturnTimeout = 10000UL;
+    bool alarmMelodyActive = false;
+    bool alarmMelodyWasPlaying = false;
+    uint32_t alarmMelodyFinishedAt = 0;
+}
+
 //----------------------------------------------------------
 // setup()
 //----------------------------------------------------------
 
 void setup()
 {
-    Serial.begin(115200);
+   // Serial.begin(115200);
     setupHardware();
 }
 
@@ -37,14 +46,19 @@ void setup()
 
 static void setupHardware()
 {
+
+    constexpr uint8_t Buzzer0v = 7;
+    pinMode(Buzzer0v, OUTPUT);
+    digitalWrite(Buzzer0v, LOW);
+    
     display.begin();
 
     uint8_t brightness =
 
         ConfigEEPROM::loadBrightness();
 
-    Serial.print("BRILHO LIDO DA EEPROM: ");
-    Serial.println(brightness);
+    // Serial.print("BRILHO LIDO DA EEPROM: ");
+    // Serial.println(brightness);
 
     display.setBrightness(brightness);
 
@@ -77,6 +91,10 @@ static void setupHardware()
     Menu::addItem(
         MenuItemId::Alarm,
         "ALARME");
+
+    Menu::addItem(
+        MenuItemId::Melodies,
+        "MELODIAS");
 
     Menu::addItem(
         MenuItemId::Brightness,
@@ -166,11 +184,63 @@ void loop()
 
     if (Buttons::read(event))
     {
-
-        Menu::update(event);
+        // Quando uma melodia foi disparada pelo alarme, HOME/SNOOZE
+        // tem prioridade sobre o Menu e interrompe imediatamente o som.
+        if (Melodias::isAlarmPlaying() &&
+            event.button == ButtonId::Home &&
+            event.type == ButtonEventType::Click)
+        {
+            Melodias::stop();
+            alarmMelodyActive = false;
+            alarmMelodyWasPlaying = false;
+            Menu::close();
+        }
+        else
+        {
+            Menu::update(event);
+        }
     }
     // verifica se algum alarme disparou
     Alarm::service();
+    Melodias::service();
+
+    // A partir do fim da melodia disparada pelo alarme, conta 10 s.
+    // Se o usuário não tocar em nada, retorna para a tela do relógio.
+    if (alarmMelodyActive)
+    {
+        if (Melodias::isAlarmPlaying())
+        {
+            alarmMelodyWasPlaying = true;
+            alarmMelodyFinishedAt = 0;
+        }
+        else if (alarmMelodyWasPlaying)
+        {
+            alarmMelodyWasPlaying = false;
+            alarmMelodyFinishedAt = millis();
+        }
+        else if (alarmMelodyFinishedAt != 0 &&
+                 (millis() - alarmMelodyFinishedAt) >= AlarmMelodyReturnTimeout)
+        {
+            alarmMelodyActive = false;
+            alarmMelodyFinishedAt = 0;
+            Menu::close();
+        }
+    }
+
+    uint8_t alarmIndex;
+
+    if (Alarm::consumeTrigger(alarmIndex))
+    {
+        Melodias::playConfigured(
+            static_cast<uint8_t>(Alarm::repeat(alarmIndex)));
+
+        alarmMelodyActive = Melodias::isAlarmPlaying();
+        alarmMelodyWasPlaying = alarmMelodyActive;
+        alarmMelodyFinishedAt = 0;
+
+        Serial.print("ALARM TRIGGER: ");
+        Serial.println(alarmIndex + 1);
+    }
 
     //------------------------------------------------------
     // Teste da camada de edição
@@ -280,11 +350,4 @@ void loop()
 
     updateClock();
 
-    uint8_t alarmIndex;
-
-    if (Alarm::consumeTrigger(alarmIndex))
-    {
-        Serial.print("ALARM TRIGGER: ");
-        Serial.println(alarmIndex + 1);
-    }
 }

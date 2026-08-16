@@ -34,4 +34,21 @@ namespace ConfigEEPROM
             raw = static_cast<uint8_t>(DEFAULT_FONT);
         EEPROM.update(ADDR_FONT, raw);
     }
+
+    uint8_t loadMelody(uint8_t category)
+    {
+        if (category > 2)
+            return 0;
+
+        const uint8_t value = EEPROM.read(ADDR_MELODY_ONCE + category);
+        return value <= 20 ? value : 0;
+    }
+
+    void saveMelody(uint8_t category, uint8_t melody)
+    {
+        if (category > 2 || melody > 20)
+            return;
+
+        EEPROM.update(ADDR_MELODY_ONCE + category, melody);
+    }
 }

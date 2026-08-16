@@ -18,6 +18,7 @@ enum class MenuItemId : uint8_t
     Date,
     Font,
     Alarm,
+    Melodies,
     Brightness,
     About
 };
